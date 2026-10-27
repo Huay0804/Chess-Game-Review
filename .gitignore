@@ -1,6 +1,5 @@
 .dart_tool/
 .flutter-plugins*
-.packages
 build/
 coverage/
 .idea/
@@ -8,8 +7,4 @@ coverage/
 .DS_Store
 engine/stockfish/
 engine/*.zip
-engine/*.tar.gz
-windows/flutter/ephemeral/
-.tooling/
-# Widget Preview related
 .widget_preview/
