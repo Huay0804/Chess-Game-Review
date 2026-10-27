@@ -1,4 +1,4 @@
-import 'package:chess_game_review/core/errors/failure.dart';
+import 'package:chess_game_review/core/errors/app_exception.dart';
 import 'package:chess_game_review/domain/entities/game_review.dart';
 import 'package:equatable/equatable.dart';
 
@@ -38,7 +38,7 @@ class ReviewLoaded extends ReviewState {
 class ReviewFailed extends ReviewState {
   const ReviewFailed(this.failure);
 
-  final Failure failure;
+  final AppException failure;
 
   @override
   List<Object?> get props => [failure];

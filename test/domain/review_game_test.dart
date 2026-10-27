@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:chess_game_review/domain/entities/review_config.dart';
-import 'package:chess_game_review/core/errors/failure.dart';
+import 'package:chess_game_review/core/errors/app_exception.dart';
 import 'package:chess_game_review/domain/entities/game_review.dart';
 import 'package:chess_game_review/domain/entities/move.dart';
 import 'package:chess_game_review/domain/entities/move_quality.dart';
@@ -14,7 +14,6 @@ import 'package:chess_game_review/domain/usecases/calculate_accuracy.dart';
 import 'package:chess_game_review/domain/usecases/classify_move.dart';
 import 'package:chess_game_review/domain/usecases/review_game.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:mocktail/mocktail.dart';
 import '../support/domain_fixtures.dart';
 
@@ -45,7 +44,7 @@ void main() {
     );
   });
   void arrange(ParsedGame parsed, Map<String, PositionEval> evaluations) {
-    when(() => rules.parsePgn(any())).thenReturn(Right(parsed));
+    when(() => rules.parsePgn(any())).thenReturn(parsed);
     when(
       () => engine.evaluate(
         any(),
@@ -53,12 +52,11 @@ void main() {
         cancellation: any(named: 'cancellation'),
       ),
     ).thenAnswer(
-      (invocation) async =>
-          Right(evaluations[invocation.positionalArguments.first]!),
+      (invocation) async => evaluations[invocation.positionalArguments.first]!,
     );
   }
 
-  Future<List<Either<Failure, ReviewProgress>>> run({
+  Future<List<ReviewProgress>> run({
     CancellationToken? cancellation,
     int depth = 14,
   }) => review(
@@ -68,8 +66,7 @@ void main() {
       depth: depth,
     ),
   ).toList();
-  GameReview completed(List<Either<Failure, ReviewProgress>> events) =>
-      events.last.getOrElse((f) => throw StateError(f.message)).review!;
+  GameReview completed(List<ReviewProgress> events) => events.last.review!;
 
   for (final side in ChessSide.values) {
     test(
@@ -159,22 +156,8 @@ void main() {
         },
       );
       final events = await run();
-      expect(
-        events.map(
-          (e) => e.getOrElse((_) => throw StateError('failure')).completed,
-        ),
-        [0, 1, 2],
-      );
-      expect(
-        events
-            .where(
-              (e) =>
-                  e.getOrElse((_) => throw StateError('failure')).review !=
-                  null,
-            )
-            .length,
-        1,
-      );
+      expect(events.map((e) => e.completed), [0, 1, 2]);
+      expect(events.where((e) => e.review != null).length, 1);
       expect(completed(events).moves.length, 2);
       verify(
         () => engine.evaluate(
@@ -200,7 +183,7 @@ void main() {
   );
   for (final throwsException in [false, true]) {
     test(
-      'engine ${throwsException ? 'exception' : 'Left'} -> EngineFailure, no loaded review',
+      'engine ${throwsException ? 'unexpected error' : 'custom exception'} -> EngineException, no loaded review',
       () async {
         final a = testPosition('a', ChessSide.white),
             b = testPosition('b', ChessSide.black);
@@ -215,20 +198,24 @@ void main() {
         if (throwsException) {
           stub.thenThrow(StateError('crash'));
         } else {
-          stub.thenAnswer((_) async => const Left(EngineFailure()));
+          stub.thenAnswer((_) async => throw const EngineException());
         }
-        final events = await run();
-        expect(events.length, 2);
-        expect(events.last.fold((f) => f, (_) => null), isA<EngineFailure>());
+        await expectLater(
+          review(
+            ReviewGameParams(game: testGame, cancellation: CancellationToken()),
+          ),
+          emitsInOrder([
+            isA<ReviewProgress>().having((p) => p.completed, 'completed', 0),
+            emitsError(isA<EngineException>()),
+            emitsDone,
+          ]),
+        );
       },
     );
   }
   test('parse failure never calls engine', () async {
-    when(() => rules.parsePgn(any())).thenReturn(const Left(ParseFailure()));
-    expect(
-      (await run()).single.fold((f) => f, (_) => null),
-      isA<ParseFailure>(),
-    );
+    when(() => rules.parsePgn(any())).thenThrow(const ParseException());
+    await expectLater(run(), throwsA(isA<ParseException>()));
     verifyZeroInteractions(engine);
   });
   test(
@@ -237,7 +224,7 @@ void main() {
       final a = testPosition('a', ChessSide.white),
           b = testPosition('b', ChessSide.black);
       arrange(ParsedGame(initial: a, moves: [testMove(a, b)]), {});
-      final pending = Completer<Either<Failure, PositionEval>>();
+      final pending = Completer<PositionEval>();
       when(
         () => engine.evaluate(
           any(),
@@ -247,13 +234,11 @@ void main() {
       ).thenAnswer((_) => pending.future);
       final token = CancellationToken();
       final future = run(cancellation: token);
+      final assertion = expectLater(future, throwsA(isA<CancelledException>()));
       await Future<void>.delayed(Duration.zero);
       token.cancel();
-      pending.complete(const Right(PositionEval(cpWhite: 0)));
-      expect(
-        (await future).last.fold((f) => f, (_) => null),
-        isA<CancelledFailure>(),
-      );
+      pending.complete(const PositionEval(cpWhite: 0));
+      await assertion;
       verify(
         () => engine.evaluate(
           any(),
@@ -264,7 +249,7 @@ void main() {
     },
   );
   test('invalid depth is rejected before parse or evaluation', () async {
-    expect((await run(depth: 21)).single.isLeft(), isTrue);
+    await expectLater(run(depth: 21), throwsA(isA<ParseException>()));
     verifyZeroInteractions(rules);
     verifyZeroInteractions(engine);
   });

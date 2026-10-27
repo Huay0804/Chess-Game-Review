@@ -1,4 +1,5 @@
 import 'package:bloc_concurrency/bloc_concurrency.dart';
+import 'package:chess_game_review/core/errors/run_with_error_handling.dart';
 import 'package:chess_game_review/domain/usecases/get_archives.dart';
 import 'package:chess_game_review/domain/usecases/get_monthly_games.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -40,15 +41,23 @@ class GameListBloc extends Bloc<GameListEvent, GameListState> {
             username: GetArchives.normalize(event.username),
           ),
         );
-        final result = await _getArchives(event.username);
-        if (emit.isDone) return;
-        result.fold(
-          (failure) => emit(
-            state.copyWith(status: GameListStatus.failure, failure: failure),
-          ),
-          (archives) => emit(
-            state.copyWith(status: GameListStatus.archives, archives: archives),
-          ),
+        await runWithErrorHandling(
+          () => _getArchives(event.username),
+          onSuccess: (archives) {
+            if (emit.isDone) return;
+            emit(
+              state.copyWith(
+                status: GameListStatus.archives,
+                archives: archives,
+              ),
+            );
+          },
+          onError: (error) {
+            if (emit.isDone) return;
+            emit(
+              state.copyWith(status: GameListStatus.failure, failure: error),
+            );
+          },
         );
       case SelectMonth():
         if (state.username.isEmpty) return;
@@ -59,16 +68,19 @@ class GameListBloc extends Bloc<GameListEvent, GameListState> {
             games: [],
           ),
         );
-        final result = await _getMonthlyGames(
-          MonthlyGamesParams(state.username, event.month),
-        );
-        if (emit.isDone) return;
-        result.fold(
-          (failure) => emit(
-            state.copyWith(status: GameListStatus.failure, failure: failure),
-          ),
-          (games) =>
-              emit(state.copyWith(status: GameListStatus.loaded, games: games)),
+        await runWithErrorHandling(
+          () =>
+              _getMonthlyGames(MonthlyGamesParams(state.username, event.month)),
+          onSuccess: (games) {
+            if (emit.isDone) return;
+            emit(state.copyWith(status: GameListStatus.loaded, games: games));
+          },
+          onError: (error) {
+            if (emit.isDone) return;
+            emit(
+              state.copyWith(status: GameListStatus.failure, failure: error),
+            );
+          },
         );
     }
   }

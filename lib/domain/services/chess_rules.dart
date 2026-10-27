@@ -1,8 +1,8 @@
-import 'package:fpdart/fpdart.dart';
-import 'package:chess_game_review/core/errors/failure.dart';
+import 'package:chess_game_review/core/errors/app_exception.dart';
 import 'package:chess_game_review/domain/entities/move.dart';
 
 abstract interface class ChessRules {
-  Either<Failure, ParsedGame> parsePgn(String pgn);
+  /// Throws [AppException] when the PGN cannot be parsed.
+  ParsedGame parsePgn(String pgn);
   String? sanForUci(String fen, String uci);
 }

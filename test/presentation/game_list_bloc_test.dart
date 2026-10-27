@@ -1,13 +1,12 @@
 import 'dart:async';
 import 'package:bloc_test/bloc_test.dart';
-import 'package:chess_game_review/core/errors/failure.dart';
+import 'package:chess_game_review/core/errors/app_exception.dart';
 import 'package:chess_game_review/domain/entities/archive_month.dart';
 import 'package:chess_game_review/domain/entities/game.dart';
 import 'package:chess_game_review/domain/usecases/get_archives.dart';
 import 'package:chess_game_review/domain/usecases/get_monthly_games.dart';
 import 'package:chess_game_review/presentation/bloc/game_list_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockGetArchives extends Mock implements GetArchives {}
@@ -31,7 +30,7 @@ void main() {
     build: () {
       when(
         () => archives('erik'),
-      ).thenAnswer((_) async => const Right([ArchiveMonth(2025, 1)]));
+      ).thenAnswer((_) async => const [ArchiveMonth(2025, 1)]);
       return GameListBloc(archives, monthly);
     },
     act: (bloc) => bloc.add(SearchPlayer('erik')),
@@ -51,7 +50,7 @@ void main() {
     build: () {
       when(
         () => monthly(any()),
-      ).thenAnswer((_) async => const Left(NotFoundFailure()));
+      ).thenAnswer((_) async => throw const NotFoundException());
       return GameListBloc(archives, monthly);
     },
     seed: () =>
@@ -66,14 +65,14 @@ void main() {
       isA<GameListState>().having(
         (s) => s.failure,
         'failure',
-        isA<NotFoundFailure>(),
+        isA<NotFoundException>(),
       ),
     ],
   );
   blocTest<GameListBloc, GameListState>(
     'month returns loaded, including empty list',
     build: () {
-      when(() => monthly(any())).thenAnswer((_) async => const Right(<Game>[]));
+      when(() => monthly(any())).thenAnswer((_) async => const <Game>[]);
       return GameListBloc(archives, monthly);
     },
     seed: () => const GameListState(username: 'erik'),
@@ -94,20 +93,41 @@ void main() {
   test(
     'late response from an older search cannot overwrite the new player',
     () async {
-      final old = Completer<Either<Failure, List<ArchiveMonth>>>();
+      final old = Completer<List<ArchiveMonth>>();
       when(() => archives('old')).thenAnswer((_) => old.future);
       when(
         () => archives('new'),
-      ).thenAnswer((_) async => const Right([ArchiveMonth(2025, 2)]));
+      ).thenAnswer((_) async => const [ArchiveMonth(2025, 2)]);
       final bloc = GameListBloc(archives, monthly)..add(SearchPlayer('old'));
       await Future<void>.delayed(Duration.zero);
       bloc.add(SearchPlayer('new'));
       await bloc.stream.firstWhere((s) => s.status == GameListStatus.archives);
-      old.complete(const Right([ArchiveMonth(2009, 10)]));
+      old.complete(const [ArchiveMonth(2009, 10)]);
       await Future<void>.delayed(Duration.zero);
       expect(bloc.state.username, 'new');
       expect(bloc.state.archives, [const ArchiveMonth(2025, 2)]);
       await bloc.close();
+    },
+  );
+
+  test(
+    'late error from an older search cannot overwrite a successful search',
+    () async {
+      final old = Completer<List<ArchiveMonth>>();
+      when(() => archives('old')).thenAnswer((_) => old.future);
+      when(
+        () => archives('new'),
+      ).thenAnswer((_) async => const [ArchiveMonth(2025, 2)]);
+      final bloc = GameListBloc(archives, monthly)..add(SearchPlayer('old'));
+      addTearDown(bloc.close);
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(SearchPlayer('new'));
+      await bloc.stream.firstWhere((s) => s.status == GameListStatus.archives);
+      old.completeError(const NetworkException());
+      await Future<void>.delayed(Duration.zero);
+      expect(bloc.state.username, 'new');
+      expect(bloc.state.failure, isNull);
+      expect(bloc.state.status, GameListStatus.archives);
     },
   );
 }

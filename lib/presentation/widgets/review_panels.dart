@@ -503,14 +503,6 @@ class ReviewSummary extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 12),
-            const Text(
-              'Accuracy là xấp xỉ. * Brilliant, Great, Miss là heuristic; cần xem lại biến engine để hiểu vị trí.',
-              style: TextStyle(
-                color: AppTheme.muted,
-                fontSize: 11,
-                height: 1.5,
-              ),
-            ),
           ],
         ),
       ),

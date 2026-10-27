@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-const _domainPackages = {'equatable', 'fpdart', 'injectable'};
+const _domainPackages = {'equatable', 'injectable'};
 const _domainLibraries = {
   'dart:async',
   'dart:collection',
@@ -107,6 +107,8 @@ void main() {
       'package:dartchess/dartchess.dart',
       'package:stockfish/stockfish.dart',
       'package:unapproved/library.dart',
+      'package:fpdart/fpdart.dart',
+      '../../core/logging/operation_logging.dart',
       'package:chess_game_review/data/models/game_dto.dart',
       '../../data/models/game_dto.dart',
       '../../presentation/pages/review_page.dart',
@@ -152,17 +154,16 @@ void main() {
     },
   );
 
-  test('Domain accepts pure libraries, interfaces and shared Failures', () {
+  test('Domain accepts pure libraries, interfaces and shared exceptions', () {
     expect(
       _violations(
         source: '''
 import 'dart:math';
 import 'package:equatable/equatable.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'usecase.dart';
 import '../repositories/game_repository.dart';
-import 'package:chess_game_review/core/errors/failure.dart';
+import 'package:chess_game_review/core/errors/app_exception.dart';
 ''',
         file: libRoot.resolve('domain/usecases/example.dart'),
         libRoot: libRoot,

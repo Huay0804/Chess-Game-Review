@@ -76,10 +76,6 @@ class GameListBody extends StatelessWidget {
             const SizedBox(height: 28),
             GameListResults(state: state, onReview: onReview),
             const SizedBox(height: 24),
-            const Text(
-              'Đánh giá và accuracy là xấp xỉ độc lập, không phải thuật toán của Chess.com.',
-              style: TextStyle(fontSize: 12, color: AppTheme.muted),
-            ),
           ],
         ),
       ),

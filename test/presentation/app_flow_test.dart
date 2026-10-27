@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'package:chess_game_review/core/errors/app_exception.dart';
 import 'package:chess_game_review/injection.dart';
 import 'package:chess_game_review/core/theme/app_theme.dart';
 import 'package:chess_game_review/domain/entities/archive_month.dart';
@@ -16,8 +17,11 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import '../support/fake_game_repository.dart';
 import '../support/fake_evaluation_engine.dart';
+
+class MockGameRepository extends Mock implements GameRepository {}
 
 void main() {
   setUp(() async {
@@ -52,6 +56,43 @@ void main() {
       await file.writeAsBytes(bytes!.buffer.asUint8List());
       image.dispose();
     });
+  }
+
+  for (final error in <Object>[
+    const NetworkException(),
+    const NotFoundException(),
+    StateError('technical detail hidden from users'),
+  ]) {
+    testWidgets(
+      'UI shows ${error.runtimeType} and can retry without crashing',
+      (tester) async {
+        final repository = MockGameRepository();
+        when(
+          () => repository.getArchives('erik'),
+        ).thenAnswer((_) async => throw error);
+        await getIt.unregister<GameRepository>();
+        getIt.registerSingleton<GameRepository>(repository);
+        await tester.pumpWidget(const App());
+        await tester.enterText(find.byType(TextFormField), 'erik');
+        await tester.tap(find.text('Tìm ván'));
+        await tester.pumpAndSettle();
+        expect(find.text(AppException.from(error).message), findsOneWidget);
+        expect(find.byType(LinearProgressIndicator), findsNothing);
+        expect(tester.takeException(), isNull);
+
+        when(
+          () => repository.getArchives('erik'),
+        ).thenAnswer((_) async => const [ArchiveMonth(2025, 1)]);
+        await tester.tap(find.text('Thử lại'));
+        await tester.pumpAndSettle();
+        expect(find.text(AppException.from(error).message), findsNothing);
+        expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        verify(() => repository.getArchives('erik')).called(2);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+      },
+    );
   }
 
   testWidgets(
@@ -160,7 +201,7 @@ void main() {
       'demo',
       const ArchiveMonth(2025, 1),
     );
-    final game = games.getOrElse((_) => []).single;
+    final game = games.single;
     await tester.pumpWidget(
       BlocProvider(
         create: (_) => getIt<ReviewBloc>(),

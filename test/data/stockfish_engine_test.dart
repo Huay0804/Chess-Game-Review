@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:chess_game_review/core/errors/failure.dart';
+import 'package:chess_game_review/core/errors/app_exception.dart';
 import 'package:chess_game_review/data/datasources/stockfish_data_source.dart';
 import 'package:chess_game_review/data/models/uci_info.dart';
 import 'package:chess_game_review/data/services/stockfish_evaluation_engine.dart';
@@ -126,7 +126,7 @@ void main() {
     },
   );
   test(
-    'invalid FEN becomes ParseFailure instead of an engine install error',
+    'invalid FEN becomes ParseException instead of an engine install error',
     () async {
       final source = MockStockfishSource();
       when(
@@ -135,15 +135,12 @@ void main() {
       when(source.dispose).thenAnswer((_) async {});
       final engine = StockfishEvaluationEngine(source);
       addTearDown(engine.dispose);
-      final result = await engine.evaluate(
+      final result = engine.evaluate(
         'bad fen',
         depth: 12,
         cancellation: CancellationToken(),
       );
-      expect(
-        result.fold((failure) => failure, (_) => null),
-        isA<ParseFailure>(),
-      );
+      await expectLater(result, throwsA(isA<ParseException>()));
     },
   );
   test('UCI parses centipawn, mate, MultiPV and rejects bounds/debug lines', () {
@@ -184,11 +181,8 @@ void main() {
         cancellation: token,
       );
       expect(first, second);
-      expect(first.getOrElse((_) => throw StateError('failure')).cpWhite, -42);
-      expect(
-        first.getOrElse((_) => throw StateError('failure')).second!.cpWhite,
-        -24,
-      );
+      expect(first.cpWhite, -42);
+      expect(first.second!.cpWhite, -24);
       verify(() => source.evaluate(blackFen, 12, token)).called(1);
       await engine.evaluate(blackFen, depth: 14, cancellation: token);
       verify(() => source.evaluate(blackFen, 14, token)).called(1);
@@ -213,32 +207,30 @@ void main() {
       );
       final cancel = CancellationToken();
       final second = engine.evaluate(blackFen, depth: 12, cancellation: cancel);
+      final cancelled = expectLater(second, throwsA(isA<CancelledException>()));
       await Future<void>.delayed(Duration.zero);
       verify(() => source.evaluate(any(), any(), any())).called(1);
       cancel.cancel();
       pending.complete(sample);
-      expect((await first).isRight(), isTrue);
-      expect(
-        (await second).fold((f) => f, (_) => null),
-        isA<CancelledFailure>(),
-      );
+      expect((await first).cpWhite, 42);
+      await cancelled;
       verifyNever(() => source.evaluate(blackFen, any(), any()));
       await engine.dispose();
     },
   );
-  test('engine exceptions become EngineFailure', () async {
+  test('engine exceptions become EngineException', () async {
     final source = MockStockfishSource();
     when(
       () => source.evaluate(any(), any(), any()),
     ).thenThrow(StateError('crashed'));
     when(source.dispose).thenAnswer((_) async {});
     final engine = StockfishEvaluationEngine(source);
-    final result = await engine.evaluate(
+    final result = engine.evaluate(
       initialFen,
       depth: 12,
       cancellation: CancellationToken(),
     );
-    expect(result.fold((f) => f, (_) => null), isA<EngineFailure>());
+    await expectLater(result, throwsA(isA<EngineException>()));
     await engine.dispose();
   });
   test(
@@ -251,7 +243,7 @@ void main() {
         depth: 12,
         cancellation: CancellationToken(),
       );
-      final evaluation = result.getOrElse((f) => throw StateError(f.message));
+      final evaluation = result;
       expect(evaluation.depth, greaterThanOrEqualTo(12));
       expect(
         evaluation.bestMove,
@@ -261,15 +253,14 @@ void main() {
       final token = CancellationToken();
       final pending = engine.evaluate(blackFen, depth: 20, cancellation: token);
       final timer = Timer(const Duration(milliseconds: 80), token.cancel);
-      final cancelled = await pending;
+      await expectLater(pending, throwsA(isA<CancelledException>()));
       timer.cancel();
-      expect(cancelled.fold((f) => f, (_) => null), isA<CancelledFailure>());
       final resumed = await engine.evaluate(
         blackFen,
         depth: 12,
         cancellation: CancellationToken(),
       );
-      expect(resumed.isRight(), isTrue);
+      expect(resumed.depth, greaterThanOrEqualTo(12));
     },
     timeout: const Timeout(Duration(seconds: 90)),
     skip:

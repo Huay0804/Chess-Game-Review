@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'package:chess_game_review/core/logging/operation_logging.dart';
 import 'package:chess_game_review/core/constants/app_config.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:chess_game_review/domain/entities/review_config.dart';
-import 'package:chess_game_review/core/errors/failure.dart';
+import 'package:chess_game_review/core/errors/app_exception.dart';
 import 'package:chess_game_review/domain/entities/player.dart';
 import 'package:chess_game_review/domain/entities/position_eval.dart';
 import 'package:chess_game_review/domain/services/cancellation_token.dart';
@@ -12,7 +12,9 @@ import 'package:chess_game_review/data/datasources/stockfish_data_source.dart';
 import 'package:chess_game_review/data/models/uci_info.dart';
 
 @LazySingleton(as: EvaluationEngine)
-class StockfishEvaluationEngine implements EvaluationEngine {
+class StockfishEvaluationEngine
+    with OperationLogging
+    implements EvaluationEngine {
   StockfishEvaluationEngine(this._source);
   final StockfishDataSource _source;
   final _cache = <String, PositionEval>{};
@@ -21,38 +23,45 @@ class StockfishEvaluationEngine implements EvaluationEngine {
   bool _disposed = false;
 
   @override
-  Future<Either<Failure, PositionEval>> evaluate(
+  Future<PositionEval> evaluate(
     String fen, {
     required int depth,
     required CancellationToken cancellation,
   }) {
-    final result = _tail.then((_) => _evaluate(fen, depth, cancellation));
+    final result = _tail.then(
+      (_) => logOperation(
+        'Stockfish depth $depth',
+        () => _evaluate(fen, depth, cancellation),
+      ),
+    );
     _tail = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
     return result;
   }
 
-  Future<Either<Failure, PositionEval>> _evaluate(
+  Future<PositionEval> _evaluate(
     String fen,
     int depth,
     CancellationToken cancellation,
   ) async {
     if (cancellation.isCancelled || _disposed) {
-      return const Left(CancelledFailure());
+      throw const CancelledException();
     }
     if (depth < ReviewConfig.minDepth || depth > ReviewConfig.maxDepth) {
-      return const Left(EngineFailure('Depth phải nằm trong khoảng 12–20.'));
+      throw const EngineException(
+        'Bạn hãy chọn độ sâu phân tích từ 12 đến 20.',
+      );
     }
     final key = '$depth|$fen';
     final cached = _cache.remove(key);
     if (cached != null) {
       _cache[key] = cached;
-      return Right(cached);
+      return cached;
     }
     _active = cancellation;
     try {
       final raw = await _source.evaluate(fen, depth, cancellation);
       if (raw == null || cancellation.isCancelled) {
-        return const Left(CancelledFailure());
+        throw const CancelledException();
       }
       final turn = fen.split(' ')[1] == 'w' ? ChessSide.white : ChessSide.black;
       EngineVariation convert(UciInfo info) => EngineVariation(
@@ -78,22 +87,24 @@ class StockfishEvaluationEngine implements EvaluationEngine {
       if (_cache.length > AppConfig.maxCachedPositions) {
         _cache.remove(_cache.keys.first);
       }
-      return Right(result);
+      return result;
+    } on AppException {
+      rethrow;
     } on FormatException {
-      return const Left(ParseFailure('Vị trí FEN không hợp lệ.'));
+      throw const ParseException(
+        'Vị trí trên bàn cờ không hợp lệ. Bạn hãy chọn ván khác.',
+      );
     } on TimeoutException {
-      if (cancellation.isCancelled) return const Left(CancelledFailure());
-      return const Left(
-        EngineFailure(
-          'Stockfish vượt quá thời gian phân tích. Hãy thử depth thấp hơn.',
-        ),
+      if (cancellation.isCancelled) throw const CancelledException();
+      throw const EngineException(
+        'Phân tích mất nhiều thời gian hơn dự kiến. '
+        'Bạn hãy chọn độ sâu thấp hơn rồi thử lại.',
       );
     } catch (_) {
-      if (cancellation.isCancelled) return const Left(CancelledFailure());
-      return const Left(
-        EngineFailure(
-          'Không chạy được Stockfish. Kiểm tra engine đã được cài và đường dẫn hợp lệ rồi thử lại.',
-        ),
+      if (cancellation.isCancelled) throw const CancelledException();
+      throw const EngineException(
+        'Chưa mở được bộ phân tích. Bạn hãy mở lại ứng dụng; '
+        'nếu vẫn lỗi, kiểm tra bộ cài Stockfish.',
       );
     } finally {
       _active = null;

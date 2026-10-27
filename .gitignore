@@ -11,3 +11,5 @@ engine/*.zip
 engine/*.tar.gz
 windows/flutter/ephemeral/
 .tooling/
+# Widget Preview related
+.widget_preview/

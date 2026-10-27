@@ -1,7 +1,6 @@
-import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:chess_game_review/domain/entities/review_config.dart';
-import 'package:chess_game_review/core/errors/failure.dart';
+import 'package:chess_game_review/core/errors/app_exception.dart';
 import 'package:chess_game_review/domain/entities/game.dart';
 import 'package:chess_game_review/domain/entities/game_review.dart';
 import 'package:chess_game_review/domain/entities/move.dart';
@@ -40,49 +39,41 @@ class ReviewGame {
   final ClassifyMove _classify;
   final CalculateAccuracy _accuracy;
 
-  Stream<Either<Failure, ReviewProgress>> call(ReviewGameParams params) async* {
+  Stream<ReviewProgress> call(ReviewGameParams params) async* {
     if (!params.game.canReview ||
         params.depth < ReviewConfig.minDepth ||
         params.depth > ReviewConfig.maxDepth) {
-      yield const Left(
-        ParseFailure('Chỉ hỗ trợ cờ tiêu chuẩn với depth từ 12 đến 20.'),
+      throw const ParseException(
+        'Bạn hãy chọn ván cờ tiêu chuẩn và độ sâu phân tích từ 12 đến 20.',
       );
-      return;
     }
     if (params.cancellation.isCancelled) {
-      yield const Left(CancelledFailure());
-      return;
+      throw const CancelledException();
     }
     ParsedGame parsed;
     try {
-      final result = _rules.parsePgn(params.game.pgn);
-      final failure = result.fold<Failure?>((f) => f, (_) => null);
-      if (failure != null) {
-        yield Left(failure);
-        return;
-      }
-      parsed = result.getOrElse((_) => throw StateError('Unreachable'));
+      parsed = _rules.parsePgn(params.game.pgn);
+    } on AppException {
+      rethrow;
     } catch (_) {
-      yield const Left(ParseFailure());
-      return;
+      throw const ParseException();
     }
     final total = parsed.moves.length;
     if (total == 0) {
-      yield const Left(ParseFailure('Ván cờ không có nước đi.'));
-      return;
+      throw const ParseException(
+        'Ván cờ này chưa có nước đi để phân tích. Bạn hãy chọn ván khác.',
+      );
     }
-    yield Right(ReviewProgress(completed: 0, total: total));
+    yield ReviewProgress(completed: 0, total: total);
 
     final cache = <String, PositionEval>{};
-    Future<Either<Failure, PositionEval>> evaluate(
-      ChessPosition position,
-    ) async {
+    Future<PositionEval> evaluate(ChessPosition position) async {
       if (params.cancellation.isCancelled) {
-        return const Left(CancelledFailure());
+        throw const CancelledException();
       }
       // Terminal status may depend on the PGN result, so check it before FEN cache.
       if (position.isTerminal) {
-        return Right(switch (position.outcome) {
+        return switch (position.outcome) {
           PositionOutcome.whiteWin => const PositionEval(
             cpWhite: ReviewConfig.mateCp,
             mateWhite: 0,
@@ -92,10 +83,10 @@ class ReviewGame {
             mateWhite: 0,
           ),
           _ => const PositionEval(cpWhite: 0),
-        });
+        };
       }
       final key = '${params.depth}|${position.fen}';
-      if (cache.containsKey(key)) return Right(cache[key]!);
+      if (cache.containsKey(key)) return cache[key]!;
       try {
         final result = await _engine.evaluate(
           position.fen,
@@ -103,37 +94,25 @@ class ReviewGame {
           cancellation: params.cancellation,
         );
         if (params.cancellation.isCancelled) {
-          return const Left(CancelledFailure());
+          throw const CancelledException();
         }
-        result.fold((_) {}, (evaluation) => cache[key] = evaluation);
+        cache[key] = result;
         return result;
+      } on AppException {
+        rethrow;
       } catch (_) {
-        return const Left(EngineFailure());
+        throw const EngineException();
       }
     }
 
-    final initialResult = await evaluate(parsed.initial);
-    final initialFailure = initialResult.fold<Failure?>((f) => f, (_) => null);
-    if (initialFailure != null) {
-      yield Left(initialFailure);
-      return;
-    }
-    final initial = initialResult.getOrElse(
-      (_) => throw StateError('Unreachable'),
-    );
+    final initial = await evaluate(parsed.initial);
     var before = initial;
     final analyses = <MoveAnalysis>[];
     final played = <String>[];
     final standardStart = parsed.initial.fen == ChessPosition.standardFen;
     for (var i = 0; i < total; i++) {
       final move = parsed.moves[i];
-      final result = await evaluate(move.after);
-      final failure = result.fold<Failure?>((f) => f, (_) => null);
-      if (failure != null) {
-        yield Left(failure);
-        return;
-      }
-      final after = result.getOrElse((_) => throw StateError('Unreachable'));
+      final after = await evaluate(move.after);
       final loss = EvaluationMath.loss(
         before.cpWhite,
         after.cpWhite,
@@ -192,13 +171,11 @@ class ReviewGame {
               depth: params.depth,
             )
           : null;
-      yield Right(
-        ReviewProgress(
-          completed: i + 1,
-          total: total,
-          currentSan: move.san,
-          review: review,
-        ),
+      yield ReviewProgress(
+        completed: i + 1,
+        total: total,
+        currentSan: move.san,
+        review: review,
       );
     }
   }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:chess_game_review/core/errors/app_exception.dart';
 import 'package:chess_game_review/data/services/dartchess_rules.dart';
 import 'package:chess_game_review/data/services/small_opening_book.dart';
 import 'package:chess_game_review/domain/entities/move.dart';
@@ -8,8 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   final rules = DartchessRules();
-  ParsedGame parse(String pgn) =>
-      rules.parsePgn(pgn).getOrElse((f) => throw StateError(f.message));
+  ParsedGame parse(String pgn) => rules.parsePgn(pgn);
   test('PGN comments, clock and variations do not become moves', () {
     final game = parse('1. e4 {[%clk 0:09:58.5]} e5 (1... c5) 2. Nf3 *');
     expect(game.moves.map((m) => m.uci), ['e2e4', 'e7e5', 'g1f3']);
@@ -46,8 +46,8 @@ void main() {
     );
   });
   test('illegal and empty PGNs are failures', () {
-    expect(rules.parsePgn('1. e5 *').isLeft(), isTrue);
-    expect(rules.parsePgn('').isLeft(), isTrue);
+    expect(() => rules.parsePgn('1. e5 *'), throwsA(isA<ParseException>()));
+    expect(() => rules.parsePgn(''), throwsA(isA<ParseException>()));
     expect(rules.sanForUci('bad', 'a'), isNull);
   });
   test('real Chess.com PGNs parse all mainline moves', () {

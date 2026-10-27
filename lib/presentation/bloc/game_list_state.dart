@@ -1,4 +1,4 @@
-import 'package:chess_game_review/core/errors/failure.dart';
+import 'package:chess_game_review/core/errors/app_exception.dart';
 import 'package:chess_game_review/domain/entities/archive_month.dart';
 import 'package:chess_game_review/domain/entities/game.dart';
 import 'package:equatable/equatable.dart';
@@ -29,7 +29,7 @@ class GameListState extends Equatable {
   final ArchiveMonth? month;
   final List<Game> games;
   final String? timeClass;
-  final Failure? failure;
+  final AppException? failure;
 
   List<Game> get visibleGames => timeClass == null
       ? games
@@ -40,7 +40,7 @@ class GameListState extends Equatable {
     List<ArchiveMonth>? archives,
     ArchiveMonth? month,
     List<Game>? games,
-    Failure? failure,
+    AppException? failure,
     String? timeClass,
     bool resetFilter = false,
   }) => GameListState(

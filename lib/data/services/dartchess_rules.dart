@@ -1,8 +1,7 @@
 import 'package:dartchess/dartchess.dart' as dc;
-import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:chess_game_review/domain/entities/review_config.dart';
-import 'package:chess_game_review/core/errors/failure.dart';
+import 'package:chess_game_review/core/errors/app_exception.dart';
 import 'package:chess_game_review/domain/entities/move.dart';
 import 'package:chess_game_review/domain/entities/player.dart';
 import 'package:chess_game_review/domain/services/chess_rules.dart';
@@ -10,29 +9,43 @@ import 'package:chess_game_review/domain/services/chess_rules.dart';
 @LazySingleton(as: ChessRules)
 class DartchessRules implements ChessRules {
   @override
-  Either<Failure, ParsedGame> parsePgn(String pgn) {
+  ParsedGame parsePgn(String pgn) {
     try {
-      if (pgn.trim().isEmpty) return const Left(ParseFailure('PGN trống.'));
+      if (pgn.trim().isEmpty) {
+        throw const ParseException(
+          'Ván cờ này chưa có dữ liệu nước đi. Bạn hãy chọn ván khác.',
+        );
+      }
       final game = dc.PgnGame.parsePgn(pgn);
       if (game.headers['Variant'] != null &&
           game.headers['Variant'] != 'Standard') {
-        return const Left(ParseFailure('Hiện chỉ hỗ trợ cờ vua tiêu chuẩn.'));
+        throw const ParseException(
+          'Hiện chỉ phân tích cờ vua tiêu chuẩn. '
+          'Bạn hãy chọn một ván cờ tiêu chuẩn.',
+        );
       }
       var position = dc.PgnGame.startingPosition(game.headers);
       if (position.rule != dc.Rule.chess) {
-        return const Left(ParseFailure('Biến thể chưa hỗ trợ.'));
+        throw const ParseException(
+          'Hiện chỉ phân tích cờ vua tiêu chuẩn. '
+          'Bạn hãy chọn một ván cờ tiêu chuẩn.',
+        );
       }
       final initial = _snapshot(position);
       final nodes = game.moves.mainline().toList();
       if (nodes.isEmpty) {
-        return const Left(ParseFailure('PGN không có nước đi.'));
+        throw const ParseException(
+          'Ván cờ này chưa có nước đi để phân tích. Bạn hãy chọn ván khác.',
+        );
       }
       final moves = <Move>[];
       for (var i = 0; i < nodes.length; i++) {
         final node = nodes[i];
         final move = position.parseSan(node.san);
         if (move == null || !position.isLegal(move)) {
-          return Left(ParseFailure('Nước ${i + 1} không hợp lệ: ${node.san}'));
+          throw ParseException(
+            'Không đọc được nước đi thứ ${i + 1}. Bạn hãy thử tải lại ván cờ.',
+          );
         }
         final before = _snapshot(position);
         final san = position.makeSan(move).$2;
@@ -61,10 +74,12 @@ class DartchessRules implements ChessRules {
           ),
         );
       }
-      return Right(ParsedGame(initial: initial, moves: moves));
+      return ParsedGame(initial: initial, moves: moves);
+    } on AppException {
+      rethrow;
     } catch (_) {
-      return const Left(
-        ParseFailure('Không đọc được PGN hoặc FEN của ván cờ.'),
+      throw const ParseException(
+        'Chưa đọc được ván cờ này. Bạn hãy thử tải lại hoặc chọn ván khác.',
       );
     }
   }

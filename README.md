@@ -1,6 +1,6 @@
 # Chess Game Review
 
-Ứng dụng Flutter đọc ván cờ từ Chess.com REST API và phân tích bằng Stockfish cục bộ. Dự án thực hiện **Chủ đề 04: Clean Architecture & Dependency Injection**.
+Ứng dụng Flutter đọc ván cờ từ Chess.com REST API và phân tích bằng Stockfish cục bộ. Dự án áp dụng **Chủ đề 01: OOP nâng cao & Xử lý lỗi trong Dart**, đồng thời giữ kiến trúc của **Chủ đề 04: Clean Architecture & Dependency Injection**.
 
 ## Thành viên và phân công
 
@@ -46,7 +46,23 @@ $env:STOCKFISH_PATH = 'C:\tools\stockfish\stockfish.exe'
 flutter run -d windows
 ```
 
-## Các yêu cầu Chủ đề 04 trong mã nguồn
+## Các yêu cầu Chủ đề 01 (Tuần 11) trong mã nguồn
+
+| Yêu cầu | Vị trí và cách áp dụng |
+| --- | --- |
+| Named constructor | [GameDto.fromChessCom](lib/data/models/game_dto.dart) trực tiếp tạo DTO từ JSON Chess.com: đọc các trường có kiểu, đổi timestamp sang UTC và xử lý accuracy tùy chọn; DataSource gọi khi tải ván, `toEntity()` chuyển DTO thành `Game` cho Domain |
+| Factory constructor | [PlayerDto.fromJson](lib/data/models/game_dto.dart) tạo DTO người chơi từ JSON; [AppException.from](lib/core/errors/app_exception.dart) chuẩn hóa lỗi cho UI |
+| Mixin | [OperationLogging](lib/core/logging/operation_logging.dart) được dùng bằng `with` trong `ChessComRemoteDataSource` và `StockfishEvaluationEngine` để ghi lỗi và thời gian xử lý qua `dart:developer` |
+| Generics | [UseCase<T, P>](lib/domain/usecases/usecase.dart), `logOperation<T>` và [runWithErrorHandling<T>](lib/core/errors/run_with_error_handling.dart) dùng lại cho nhiều kiểu dữ liệu |
+| Custom Exception | [AppException](lib/core/errors/app_exception.dart) và các lớp con biểu diễn lỗi mạng, HTTP, dữ liệu, engine và hủy thao tác; Data chuyển lỗi Dio thành exception của ứng dụng |
+| Wrapper, try-catch-finally | [runWithErrorHandling](lib/core/errors/run_with_error_handling.dart) bắt lỗi đồng bộ/bất đồng bộ tại Bloc, chuyển lỗi thành state; `finally` hủy token khi kết thúc theo dõi review |
+| Thông báo thân thiện trên UI | `GameListBloc` và `ReviewBloc` truyền exception qua state; widget hiển thị `message`, hỗ trợ thử lại; kiểm chứng trong [app_flow_test.dart](test/presentation/app_flow_test.dart) |
+
+Repository/UseCase trả dữ liệu trực tiếp (`Future<T>`, `Stream<ReviewProgress>`), ném `AppException` khi thất bại; không dùng `fpdart`. Lỗi từ stream được `ReviewBloc` chờ và bắt qua wrapper.
+
+Demo xử lý lỗi: nhập `../x` rồi nhấn **Tìm ván** để thấy lỗi kiểm tra đầu vào; hoặc ngắt mạng và tìm `erik` để thấy lỗi kết nối, sau đó kết nối lại và nhấn **Thử lại**. Các lỗi này không đóng ứng dụng.
+
+## Các yêu cầu Chủ đề 04 (Tuần 10) trong mã nguồn
 
 | Yêu cầu | Vị trí |
 | --- | --- |

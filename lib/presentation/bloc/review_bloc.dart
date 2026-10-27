@@ -1,5 +1,6 @@
 import 'package:bloc_concurrency/bloc_concurrency.dart';
-import 'package:chess_game_review/core/errors/failure.dart';
+import 'package:chess_game_review/core/errors/app_exception.dart';
+import 'package:chess_game_review/core/errors/run_with_error_handling.dart';
 import 'package:chess_game_review/domain/services/cancellation_token.dart';
 import 'package:chess_game_review/domain/usecases/review_game.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -29,8 +30,8 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     final token = CancellationToken();
     _cancellation = token;
     emit(const ReviewLoading());
-    try {
-      await emit.forEach(
+    await runWithErrorHandling<void>(
+      () => emit.forEach(
         _review(
           ReviewGameParams(
             game: request.game,
@@ -38,19 +39,21 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
             cancellation: token,
           ),
         ),
-        onData: (result) => result.fold(
-          (failure) => failure is CancelledFailure
+        onData: (progress) => progress.review == null
+            ? ReviewInProgress(progress)
+            : ReviewLoaded(progress.review!),
+      ),
+      onSuccess: (_) {},
+      onError: (error) {
+        if (emit.isDone) return;
+        emit(
+          error is CancelledException
               ? const ReviewInitial()
-              : ReviewFailed(failure),
-          (progress) => progress.review == null
-              ? ReviewInProgress(progress)
-              : ReviewLoaded(progress.review!),
-        ),
-        onError: (_, _) => const ReviewFailed(EngineFailure()),
-      );
-    } finally {
-      token.cancel();
-    }
+              : ReviewFailed(error),
+        );
+      },
+      onFinally: token.cancel,
+    );
   }
 
   @override

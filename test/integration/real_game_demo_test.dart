@@ -1,4 +1,3 @@
-import 'package:chess_game_review/core/errors/failure.dart';
 import 'package:chess_game_review/data/services/stockfish_evaluation_engine.dart';
 import 'package:chess_game_review/domain/entities/archive_month.dart';
 import 'package:chess_game_review/domain/entities/game_review.dart';
@@ -10,12 +9,6 @@ import 'package:chess_game_review/domain/usecases/review_game.dart';
 import 'package:chess_game_review/injection.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fpdart/fpdart.dart';
-
-T _value<T>(Either<Failure, T> result) => result.fold(
-  (failure) => throw TestFailure(failure.message),
-  (value) => value,
-);
 
 // This test contacts Chess.com and starts real Stockfish only when requested.
 // ignore_for_file: avoid_print
@@ -33,10 +26,10 @@ void main() {
       });
       expect(getIt<EvaluationEngine>(), isA<StockfishEvaluationEngine>());
       const month = ArchiveMonth(2009, 10);
-      final archives = _value(await getIt<GetArchives>()('erik'));
+      final archives = await getIt<GetArchives>()('erik');
       expect(archives, contains(month));
-      final games = _value(
-        await getIt<GetMonthlyGames>()(MonthlyGamesParams('erik', month)),
+      final games = await getIt<GetMonthlyGames>()(
+        MonthlyGamesParams('erik', month),
       );
       final game = games.singleWhere(
         (game) => game.url == 'https://www.chess.com/game/daily/29150975',
@@ -49,10 +42,9 @@ void main() {
       final watch = Stopwatch()..start();
       GameReview? review;
       var events = 0;
-      await for (final result in getIt<ReviewGame>()(
+      await for (final progress in getIt<ReviewGame>()(
         ReviewGameParams(game: game, cancellation: cancellation, depth: 12),
       )) {
-        final progress = _value(result);
         expect(progress.completed, events++);
         expect(progress.total, 32);
         if (progress.completed % 8 == 0) {

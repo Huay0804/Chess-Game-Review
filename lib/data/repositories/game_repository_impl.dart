@@ -1,8 +1,7 @@
 import 'package:chess_game_review/core/constants/app_config.dart';
 import 'package:dio/dio.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
-import 'package:chess_game_review/core/errors/failure.dart';
+import 'package:chess_game_review/core/errors/app_exception.dart';
 import 'package:chess_game_review/core/time/app_clock.dart';
 import 'package:chess_game_review/domain/entities/archive_month.dart';
 import 'package:chess_game_review/domain/entities/game.dart';
@@ -16,60 +15,60 @@ class GameRepositoryImpl implements GameRepository {
   final AppClock _clock;
   final _months = <String, List<Game>>{};
 
-  Future<Either<Failure, T>> _guard<T>(Future<T> Function() work) async {
+  Future<T> _guard<T>(Future<T> Function() work) async {
     try {
-      return Right(await work());
+      return await work();
     } on DioException catch (e) {
-      return Left(switch (e.response?.statusCode) {
-        404 => const NotFoundFailure(),
-        429 => const RateLimitFailure(),
-        final int _ => const ServerFailure(),
-        _ => const NetworkFailure(),
-      });
+      throw switch (e.response?.statusCode) {
+        404 => const NotFoundException(),
+        429 => const RateLimitException(),
+        final int _ => const ServerException(),
+        _ => const NetworkException(),
+      };
     } on FormatException {
-      return const Left(ParseFailure());
+      throw const ParseException();
     } on TypeError {
-      return const Left(ParseFailure());
+      throw const ParseException();
     }
   }
 
   @override
-  Future<Either<Failure, List<ArchiveMonth>>> getArchives(String username) =>
-      _guard(() async {
-        final result =
-            (await _remote.getArchives(
-                username.trim().toLowerCase(),
-              )).map((e) => e.toEntity()).toSet().toList()
-              ..sort((a, b) => b.startUtc.compareTo(a.startUtc));
-        return List.unmodifiable(result);
-      });
+  Future<List<ArchiveMonth>> getArchives(String username) => _guard(() async {
+    final result =
+        (await _remote.getArchives(
+            username.trim().toLowerCase(),
+          )).map((e) => e.toEntity()).toSet().toList()
+          ..sort((a, b) => b.startUtc.compareTo(a.startUtc));
+    return List.unmodifiable(result);
+  });
 
   @override
-  Future<Either<Failure, List<Game>>> getMonthlyGames(
-    String username,
-    ArchiveMonth month,
-  ) => _guard(() async {
-    final normalized = username.trim().toLowerCase();
-    final key = '$normalized/${month.path}';
-    final cached = _months.remove(key);
-    if (cached != null) {
-      _months[key] = cached;
-      return cached;
-    }
-    final games =
-        (await _remote.getMonthlyGames(
-            normalized,
-            month.year,
-            month.month,
-          )).map((e) => e.toEntity()).toList()
-          ..sort((a, b) => b.endTime.compareTo(a.endTime));
-    final result = List<Game>.unmodifiable(games);
-    if (!DateTime.utc(month.year, month.month + 1).isAfter(_clock.nowUtc())) {
-      _months[key] = result;
-      if (_months.length > AppConfig.maxCachedMonths) {
-        _months.remove(_months.keys.first);
-      }
-    }
-    return result;
-  });
+  Future<List<Game>> getMonthlyGames(String username, ArchiveMonth month) =>
+      _guard(() async {
+        final normalized = username.trim().toLowerCase();
+        final key = '$normalized/${month.path}';
+        final cached = _months.remove(key);
+        if (cached != null) {
+          _months[key] = cached;
+          return cached;
+        }
+        final games =
+            (await _remote.getMonthlyGames(
+                normalized,
+                month.year,
+                month.month,
+              )).map((e) => e.toEntity()).toList()
+              ..sort((a, b) => b.endTime.compareTo(a.endTime));
+        final result = List<Game>.unmodifiable(games);
+        if (!DateTime.utc(
+          month.year,
+          month.month + 1,
+        ).isAfter(_clock.nowUtc())) {
+          _months[key] = result;
+          if (_months.length > AppConfig.maxCachedMonths) {
+            _months.remove(_months.keys.first);
+          }
+        }
+        return result;
+      });
 }

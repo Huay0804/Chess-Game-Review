@@ -5,7 +5,7 @@ import 'package:chess_game_review/domain/services/evaluation_engine.dart';
 import 'package:chess_game_review/presentation/bloc/game_list_bloc.dart';
 import 'package:chess_game_review/presentation/bloc/review_bloc.dart';
 import 'package:chess_game_review/injection.dart';
-import 'package:chess_game_review/core/errors/failure.dart';
+import 'package:chess_game_review/core/errors/app_exception.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
@@ -42,8 +42,8 @@ void main() {
     },
   );
   test('Failures preserve type and value equality', () {
-    expect(const NotFoundFailure(), const NotFoundFailure());
-    expect(const NotFoundFailure(), isNot(const ServerFailure()));
+    expect(const NotFoundException(), const NotFoundException());
+    expect(const NotFoundException(), isNot(const ServerException()));
   });
   testWidgets('Flutter application compiles and renders with the theme', (
     tester,
