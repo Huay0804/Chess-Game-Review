@@ -68,6 +68,9 @@ class ChessBoard extends StatelessWidget {
                         Center(
                           child: Text(
                             _glyphs[piece.toLowerCase()] ?? '',
+                            // Board symbols use square geometry. Each square's
+                            // semantics above still identifies its piece.
+                            textScaler: TextScaler.noScaling,
                             style: TextStyle(
                               fontFamily: 'Segoe UI Symbol',
                               fontSize: constraints.maxWidth / 8 * .79,
@@ -91,6 +94,7 @@ class ChessBoard extends StatelessWidget {
                           top: 1,
                           child: Text(
                             '$rank',
+                            textScaler: TextScaler.noScaling,
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -106,6 +110,7 @@ class ChessBoard extends StatelessWidget {
                           bottom: 1,
                           child: Text(
                             String.fromCharCode(97 + file),
+                            textScaler: TextScaler.noScaling,
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,

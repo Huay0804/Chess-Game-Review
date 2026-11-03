@@ -44,33 +44,45 @@ class GameListBody extends StatelessWidget {
             const SizedBox(height: 28),
             Form(
               key: formKey,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: usernameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Username Chess.com',
-                        hintText: 'Ví dụ: erik',
-                        prefixIcon: Icon(Icons.person_outline),
-                      ),
-                      onFieldSubmitted: (_) => onSearch(),
-                      validator: (value) => (value ?? '').trim().isEmpty
-                          ? 'Nhập username để bắt đầu'
-                          : null,
+              child: LayoutBuilder(
+                builder: (context, box) {
+                  final input = TextFormField(
+                    controller: usernameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Username Chess.com',
+                      hintText: 'Ví dụ: erik',
+                      prefixIcon: Icon(Icons.person_outline),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    height: 56,
+                    onFieldSubmitted: (_) => onSearch(),
+                    validator: (value) => (value ?? '').trim().isEmpty
+                        ? 'Nhập username để bắt đầu'
+                        : null,
+                  );
+                  final button = ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 56),
                     child: FilledButton.icon(
                       onPressed: onSearch,
                       icon: const Icon(Icons.search),
                       label: const Text('Tìm ván'),
                     ),
-                  ),
-                ],
+                  );
+                  final textScale =
+                      MediaQuery.textScalerOf(context).scale(14) / 14;
+                  if (box.maxWidth < 520 * textScale) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [input, const SizedBox(height: 12), button],
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: input),
+                      const SizedBox(width: 12),
+                      button,
+                    ],
+                  );
+                },
               ),
             ),
             const SizedBox(height: 28),
@@ -107,11 +119,18 @@ class GameListResults extends StatelessWidget {
         Card(
           child: Padding(
             padding: const EdgeInsets.all(20),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline, color: AppTheme.accent),
-                const SizedBox(width: 12),
-                Expanded(child: Text(state.failure!.message)),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.info_outline, color: AppTheme.accent),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(state.failure!.message)),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 TextButton(
                   onPressed: () => context.read<GameListBloc>().add(
                     state.month == null
@@ -135,6 +154,8 @@ class GameListResults extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
+          isExpanded: true,
+          itemHeight: null,
           key: ValueKey('${state.username}/${state.month?.path}'),
           initialValue: state.month?.path,
           decoration: const InputDecoration(

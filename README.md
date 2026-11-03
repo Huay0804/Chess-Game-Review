@@ -1,6 +1,6 @@
 # Chess Game Review
 
-Ứng dụng Flutter đọc ván cờ từ Chess.com REST API và phân tích bằng Stockfish cục bộ. Dự án áp dụng **Chủ đề 01: OOP nâng cao & Xử lý lỗi trong Dart**, đồng thời giữ kiến trúc của **Chủ đề 04: Clean Architecture & Dependency Injection**.
+Ứng dụng Flutter đọc ván cờ từ Chess.com REST API và phân tích bằng Stockfish cục bộ. Dự án áp dụng **Chủ đề 01: OOP nâng cao & Xử lý lỗi trong Dart**, **Chủ đề 02: Bố cục linh hoạt & Xử lý không gian**, đồng thời giữ kiến trúc của **Chủ đề 04: Clean Architecture & Dependency Injection**.
 
 ## Thành viên và phân công
 
@@ -61,6 +61,18 @@ flutter run -d windows
 Repository/UseCase trả dữ liệu trực tiếp (`Future<T>`, `Stream<ReviewProgress>`), ném `AppException` khi thất bại; không dùng `fpdart`. Lỗi từ stream được `ReviewBloc` chờ và bắt qua wrapper.
 
 Demo xử lý lỗi: nhập `../x` rồi nhấn **Tìm ván** để thấy lỗi kiểm tra đầu vào; hoặc ngắt mạng và tìm `erik` để thấy lỗi kết nối, sau đó kết nối lại và nhấn **Thử lại**. Các lỗi này không đóng ứng dụng.
+
+## Các yêu cầu Chủ đề 02 (Tuần 12) trong mã nguồn
+
+| Yêu cầu | Vị trí và cách áp dụng |
+| --- | --- |
+| Main axis, cross axis, phân chia không gian | [review_panels.dart](lib/presentation/widgets/review_panels.dart): `LayoutBuilder` chọn `Row` hai cột hoặc `Column`; `Expanded` chia không gian bàn cờ và kết quả theo tỷ lệ 6:4 |
+| Expanded, Flexible | `Expanded` cấp phần chiều rộng còn lại cho bàn cờ; `Flexible` cho nhãn chất lượng nước đi xuống dòng trong bảng tổng kết |
+| Stack, Positioned | [chess_board.dart](lib/presentation/widgets/chess_board.dart): xếp quân cờ và tọa độ lên từng ô; `AspectRatio` giữ bàn cờ vuông khi resize |
+| Xử lý overflow | [game_list_widgets.dart](lib/presentation/widgets/game_list_widgets.dart): ô tìm kiếm và nút chuyển sang chiều dọc khi thiếu chỗ; các panel review dùng `Wrap` và vùng cuộn; [move_list.dart](lib/presentation/widgets/move_list.dart) tính chiều cao hàng theo nội dung và cỡ chữ, dùng cùng chiều cao để cuộn tới nước đang chọn |
+| Kiểm chứng thay đổi kích thước/nội dung | [responsive_layout_test.dart](test/presentation/responsive_layout_test.dart): cửa sổ hẹp/thấp, chữ 100–200%, tên dài, thông báo lỗi dài, thao tác nút và giữ nước đi khi resize |
+
+Demo: mở một ván đã phân tích, chọn nước đi và đảo bàn cờ; kéo cửa sổ từ rộng xuống hẹp để thấy hai cột chuyển thành một cột, sau đó giảm chiều cao để thử cuộn. Nước đang chọn và hướng bàn cờ được giữ lại. Chạy `flutter test test/presentation/responsive_layout_test.dart` để kiểm tra thêm trường hợp chữ lớn và nội dung dài bằng dữ liệu kiểm thử, không cần mạng hay Stockfish.
 
 ## Các yêu cầu Chủ đề 04 (Tuần 10) trong mã nguồn
 

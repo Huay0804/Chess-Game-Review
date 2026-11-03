@@ -126,7 +126,7 @@ class ReviewStatusPanel extends StatelessWidget {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 500),
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -221,14 +221,16 @@ class ReviewBoardPanel extends StatelessWidget {
           ),
           const SizedBox(width: 9),
           Expanded(
-            child: Text(
-              '${player.username}  (${player.rating})',
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${player.username}  (${player.rating})'),
+                Text(
+                  player.result,
+                  style: const TextStyle(color: AppTheme.muted, fontSize: 11),
+                ),
+              ],
             ),
-          ),
-          Text(
-            player.result,
-            style: const TextStyle(color: AppTheme.muted, fontSize: 11),
           ),
         ],
       ),
@@ -321,7 +323,10 @@ class ReviewBoardControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
     children: [
-      Row(
+      Wrap(
+        spacing: 16,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Text(
             evaluationLabel(evaluation),
@@ -331,12 +336,10 @@ class ReviewBoardControls extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const Spacer(),
           Text(
             '$selectedPly / $moveCount',
             style: const TextStyle(color: AppTheme.muted),
           ),
-          const SizedBox(width: 8),
           IconButton(
             tooltip: 'Đảo bàn cờ',
             onPressed: onFlip,
@@ -344,8 +347,8 @@ class ReviewBoardControls extends StatelessWidget {
           ),
         ],
       ),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      Wrap(
+        alignment: WrapAlignment.center,
         children: [
           IconButton(
             tooltip: 'Về đầu',
@@ -435,24 +438,38 @@ class ReviewSummary extends StatelessWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: _Accuracy(
-                    name: review.game.white.username,
-                    value: review.accuracy.white,
-                    label: 'TRẮNG',
-                  ),
-                ),
-                Container(width: 1, height: 60, color: Colors.white12),
-                Expanded(
-                  child: _Accuracy(
-                    name: review.game.black.username,
-                    value: review.accuracy.black,
-                    label: 'ĐEN',
-                  ),
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, box) {
+                final whiteAccuracy = _Accuracy(
+                  name: review.game.white.username,
+                  value: review.accuracy.white,
+                  label: 'TRẮNG',
+                );
+                final blackAccuracy = _Accuracy(
+                  name: review.game.black.username,
+                  value: review.accuracy.black,
+                  label: 'ĐEN',
+                );
+                // Each score needs room for "100.0", including large text.
+                if (box.maxWidth <
+                    11 * MediaQuery.textScalerOf(context).scale(32)) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      whiteAccuracy,
+                      const Divider(height: 24),
+                      blackAccuracy,
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: whiteAccuracy),
+                    Container(width: 1, height: 60, color: Colors.white12),
+                    Expanded(child: blackAccuracy),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 20),
             for (final quality in MoveQuality.values)
@@ -480,9 +497,12 @@ class ReviewSummary extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            quality.label,
-                            style: TextStyle(color: quality.color),
+                          Flexible(
+                            child: Text(
+                              quality.label,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: quality.color),
+                            ),
                           ),
                           if (quality.isHeuristic)
                             const Text(
@@ -567,7 +587,10 @@ class MoveInsight extends StatelessWidget {
                 'Chọn một nước đi hoặc dùng phím ← → để bắt đầu xem lại.',
               )
             else ...[
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Text(
                     '${item.move.moveNumber}${item.move.side == ChessSide.white ? '.' : '...'} ${item.move.san}',
@@ -576,9 +599,7 @@ class MoveInsight extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(width: 12),
                   QualityChip(item.quality),
-                  const Spacer(),
                   Text(
                     clockLabel(item.move.clock),
                     style: const TextStyle(color: AppTheme.muted),
