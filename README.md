@@ -36,7 +36,7 @@ Script cài Stockfish 17.1 vào `engine/stockfish/`. Thư mục này không đư
 
 ## Cấu hình
 
-Ứng dụng không cần API key, `.env` hoặc `google-services.json`. Các cấu hình sau là tùy chọn:
+Ứng dụng chạy với cấu hình mặc định. Các tùy chọn bên dưới cho phép đổi đường dẫn Stockfish và User-Agent:
 
 | Cấu hình | Cách truyền | Mục đích |
 | --- | --- | --- |
@@ -62,9 +62,9 @@ flutter run -d windows
 | Wrapper, try-catch-finally | [runWithErrorHandling](lib/core/errors/run_with_error_handling.dart) bắt lỗi đồng bộ/bất đồng bộ tại Bloc, chuyển lỗi thành state; `finally` hủy token khi kết thúc theo dõi review |
 | Thông báo thân thiện trên UI | `GameListBloc` và `ReviewBloc` truyền exception qua state; widget hiển thị `message`, hỗ trợ thử lại; kiểm chứng trong [app_flow_test.dart](test/presentation/app_flow_test.dart) |
 
-Repository/UseCase trả dữ liệu trực tiếp (`Future<T>`, `Stream<ReviewProgress>`), ném `AppException` khi thất bại; không dùng `fpdart`. Lỗi từ stream được `ReviewBloc` chờ và bắt qua wrapper.
+Repository/UseCase trả dữ liệu trực tiếp (`Future<T>`, `Stream<ReviewProgress>`) và ném `AppException` khi thất bại. `ReviewBloc` chờ và bắt lỗi từ stream qua wrapper.
 
-Demo xử lý lỗi: nhập `../x` rồi nhấn **Tìm ván** để thấy lỗi kiểm tra đầu vào; hoặc ngắt mạng và tìm `erik` để thấy lỗi kết nối, sau đó kết nối lại và nhấn **Thử lại**. Các lỗi này không đóng ứng dụng.
+Demo xử lý lỗi: nhập `../x` rồi nhấn **Tìm ván** để thấy lỗi kiểm tra đầu vào; hoặc ngắt mạng và tìm `erik` để thấy lỗi kết nối, sau đó kết nối lại và nhấn **Thử lại**.
 
 ## Các yêu cầu Chủ đề 02 (Tuần 12) trong mã nguồn
 
@@ -76,7 +76,7 @@ Demo xử lý lỗi: nhập `../x` rồi nhấn **Tìm ván** để thấy lỗi
 | Xử lý overflow | [game_list_widgets.dart](lib/presentation/widgets/game_list_widgets.dart): ô tìm kiếm và nút chuyển sang chiều dọc khi thiếu chỗ; các panel review dùng `Wrap` và vùng cuộn; [move_list.dart](lib/presentation/widgets/move_list.dart) tính chiều cao hàng theo nội dung và cỡ chữ, dùng cùng chiều cao để cuộn tới nước đang chọn |
 | Kiểm chứng thay đổi kích thước/nội dung | [responsive_layout_test.dart](test/presentation/responsive_layout_test.dart): cửa sổ hẹp/thấp, chữ 100–200%, tên dài, thông báo lỗi dài, thao tác nút và giữ nước đi khi resize |
 
-Demo: mở một ván đã phân tích, chọn nước đi và đảo bàn cờ; kéo cửa sổ từ rộng xuống hẹp để thấy hai cột chuyển thành một cột, sau đó giảm chiều cao để thử cuộn. Nước đang chọn và hướng bàn cờ được giữ lại. Chạy `flutter test test/presentation/responsive_layout_test.dart` để kiểm tra thêm trường hợp chữ lớn và nội dung dài bằng dữ liệu kiểm thử, không cần mạng hay Stockfish.
+Demo: mở một ván đã phân tích, chọn nước đi và đảo bàn cờ; kéo cửa sổ từ rộng xuống hẹp để thấy hai cột chuyển thành một cột, sau đó giảm chiều cao để thử cuộn. Ứng dụng giữ nguyên nước đang chọn và hướng bàn cờ. Chạy `flutter test test/presentation/responsive_layout_test.dart` để kiểm tra thêm trường hợp chữ lớn và nội dung dài bằng dữ liệu kiểm thử.
 
 ## Các yêu cầu Chủ đề 04 (Tuần 10) trong mã nguồn
 
@@ -98,17 +98,17 @@ Demo: mở một ván đã phân tích, chọn nước đi và đảo bàn cờ;
 | AnimationController và tài nguyên | Quân trượt 350 ms khi xem từng nước; nhãn chất lượng xuất hiện trong 280 ms sau khi quân tới ô đích. Thả sai trả quân về trong 200 ms; `SingleTickerProviderStateMixin`, `initState`, `dispose`, hỗ trợ `disableAnimations` |
 | Gesture có chức năng thực tế | `Draggable` cho phép kéo quân trực tiếp, gợi ý ô hợp lệ, chọn quân phong cấp; quân bám con trỏ khi kéo |
 | Phân tích nước thử | [ExploreMoves](lib/domain/usecases/explore_moves.dart) dùng abstract `ChessRules` để kiểm tra/thực hiện nước; [AnalyzeMove](lib/domain/usecases/analyze_move.dart) đánh giá trước/sau qua abstract `EvaluationEngine` và dùng lại công thức phân loại |
-| Không cản thao tác | [VariationCubit](lib/presentation/bloc/variation_cubit.dart) cập nhật bàn ngay, hủy tìm kiếm cũ và bỏ qua kết quả đến muộn; cho phép đi tiếp trong lúc engine tính; màu/điểm cũ không được dùng cho vị trí mới |
+| Không cản thao tác | [VariationCubit](lib/presentation/bloc/variation_cubit.dart) cập nhật bàn ngay, hủy tìm kiếm cũ và bỏ qua kết quả đến muộn; cho phép đi tiếp trong lúc engine tính; xóa màu/điểm cũ khi chuyển sang vị trí mới |
 
-Demo: mở một ván đã phân tích → chọn vị trí → kéo quân của bên tới lượt sang ô có chấm. Đi đúng nước tiếp theo vẫn theo ván gốc; đi khác tự tạo nhánh, không cần bật chế độ. Thả sai hoặc ngoài bàn sẽ trả quân về. Sau khi Stockfish tính xong, cả ô xuất phát và ô đích đổi cùng màu chất lượng nước đi, kèm nhãn nhỏ ở ô đích; phần nhận xét bên dưới vẫn có tên chất lượng bằng chữ.
+Demo: mở một ván đã phân tích → chọn vị trí → kéo quân của bên tới lượt sang ô có chấm. Đi đúng nước tiếp theo vẫn theo ván gốc; đi khác tự tạo nhánh ngay khi thả quân. Thả sai hoặc ngoài bàn sẽ trả quân về. Sau khi Stockfish tính xong, cả ô xuất phát và ô đích đổi cùng màu chất lượng nước đi, kèm nhãn nhỏ ở ô đích; phần nhận xét bên dưới vẫn có tên chất lượng bằng chữ.
 
 Có thể kéo tiếp cho cả hai bên, dùng nút/phím ← → hoặc chọn nước trong nhánh. Bấm **Về ván gốc**, phím **Esc**, hoặc chọn một nước trong danh sách/biểu đồ ván gốc để trở lại. Nhánh là tạm thời: đi khác ở giữa nhánh thay phần tiếp theo; trở về ván gốc bỏ nhánh. Tổng kết accuracy và biểu đồ luôn thuộc ván gốc. Nếu phân tích lỗi, vị trí vẫn giữ nguyên và có nút thử lại.
 
-Nhãn dùng công thức hiện có của dự án, không phải thuật toán độc quyền Chess.com. Nhánh chưa có nước đáp tiếp theo để xác nhận hy sinh nên không tự gán Brilliant. Tham khảo luồng [tạo biến trực tiếp](https://support.chess.com/en/articles/8648793-how-can-i-add-comments-and-variations-to-games) và [nhãn phân loại trên bàn](https://support.chess.com/en/articles/8584089-how-does-game-review-work) của Chess.com; thời lượng và hiệu ứng là lựa chọn của dự án.
-
-Kiểm chứng: `test/domain/analyze_move_test.dart` mock các interface; `test/data/interactive_rules_test.dart` kiểm tra luật; `test/presentation/chess_board_test.dart` và `variation_cubit_test.dart` kiểm tra kéo thả, chuyển động, nhánh, hủy/tái thử. Các test này không cần mạng hay Stockfish thật.
+Kiểm chứng: `test/domain/analyze_move_test.dart` mock các interface; `test/data/interactive_rules_test.dart` kiểm tra luật; `test/presentation/chess_board_test.dart` và `variation_cubit_test.dart` kiểm tra kéo thả, chuyển động, nhánh, hủy/tái thử.
 
 ## Kiểm tra
+
+Các test Domain, bố cục và tương tác nêu trên không cần mạng hay Stockfish thật.
 
 ```powershell
 dart format --output=none --set-exit-if-changed lib test
