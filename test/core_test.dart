@@ -4,6 +4,7 @@ import 'package:chess_game_review/domain/repositories/game_repository.dart';
 import 'package:chess_game_review/domain/services/evaluation_engine.dart';
 import 'package:chess_game_review/presentation/bloc/game_list_bloc.dart';
 import 'package:chess_game_review/presentation/bloc/review_bloc.dart';
+import 'package:chess_game_review/presentation/bloc/variation_cubit.dart';
 import 'package:chess_game_review/injection.dart';
 import 'package:chess_game_review/core/errors/app_exception.dart';
 import 'package:dio/dio.dart';
@@ -23,10 +24,12 @@ void main() {
       final list = getIt<GameListBloc>();
       final first = getIt<ReviewBloc>();
       final second = getIt<ReviewBloc>();
+      final exploration = getIt<VariationCubit>();
       expect(first, isNot(same(second)));
       await list.close();
       await first.close();
       await second.close();
+      await exploration.close();
     },
   );
   test(

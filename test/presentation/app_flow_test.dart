@@ -7,6 +7,7 @@ import 'package:chess_game_review/domain/entities/archive_month.dart';
 import 'package:chess_game_review/domain/repositories/game_repository.dart';
 import 'package:chess_game_review/domain/services/evaluation_engine.dart';
 import 'package:chess_game_review/presentation/bloc/review_bloc.dart';
+import 'package:chess_game_review/presentation/bloc/variation_cubit.dart';
 import 'package:chess_game_review/presentation/pages/game_list_page.dart';
 import 'package:chess_game_review/presentation/pages/review_page.dart';
 import 'package:chess_game_review/presentation/widgets/chess_board.dart';
@@ -137,7 +138,7 @@ void main() {
           .widget<ChessBoard>(find.byType(ChessBoard))
           .position
           .fen;
-      await tester.tap(find.byTooltip('Nước tiếp'));
+      await tester.tap(find.byKey(const Key('start-review')));
       await tester.pumpAndSettle();
       expect(
         tester.widget<ChessBoard>(find.byType(ChessBoard)).position.fen,
@@ -207,20 +208,35 @@ void main() {
         create: (_) => getIt<ReviewBloc>(),
         child: MaterialApp(
           theme: AppTheme.dark,
-          home: ReviewPage(game: game),
+          home: BlocProvider(
+            create: (_) => getIt<VariationCubit>(),
+            child: ReviewPage(game: game),
+          ),
         ),
       ),
     );
     await finishReview(tester);
     expect(find.byType(ChessBoard), findsOneWidget);
     expect(tester.takeException(), isNull);
-    await tester.tap(find.byTooltip('Độ sâu phân tích'));
+    await tester.tap(find.byTooltip('Cài đặt phân tích'));
     await tester.pumpAndSettle();
-    expect(find.text('Depth 12'), findsOneWidget);
-    expect(find.text('Depth 20'), findsOneWidget);
-    await tester.tap(find.text('Depth 12'));
+    expect(find.text('Độ sâu 12'), findsOneWidget);
+    expect(find.text('Độ sâu 20'), findsOneWidget);
+    await tester.tap(
+      find.widgetWithText(CheckedPopupMenuItem<int>, 'Độ sâu 13'),
+    );
     await finishReview(tester);
-    expect(find.text('DEPTH 12 ▾'), findsOneWidget);
+    expect(find.text('DEPTH 12 ▾'), findsNothing);
+    await tester.tap(find.byTooltip('Cài đặt phân tích'));
+    await tester.pumpAndSettle();
+    final selected = tester.widget<CheckedPopupMenuItem<int>>(
+      find.widgetWithText(CheckedPopupMenuItem<int>, 'Độ sâu 13'),
+    );
+    expect(selected.checked, isTrue);
+    await tester.tap(
+      find.widgetWithText(CheckedPopupMenuItem<int>, 'Độ sâu 12'),
+    );
+    await finishReview(tester);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();

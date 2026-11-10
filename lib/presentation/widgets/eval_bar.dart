@@ -10,12 +10,26 @@ class EvalBar extends StatelessWidget {
     required this.height,
     this.flipped = false,
   });
-  final PositionEval evaluation;
+  final PositionEval? evaluation;
   final double height;
   final bool flipped;
   @override
   Widget build(BuildContext context) {
-    final white = (EvaluationMath.winPercent(evaluation.cpWhite) * 100)
+    if (evaluation == null) {
+      return Tooltip(
+        message: 'Chưa có đánh giá cho vị trí này',
+        child: Container(
+          width: 28,
+          height: height,
+          decoration: BoxDecoration(
+            color: const Color(0xFF34424C),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: const Center(child: Text('—')),
+        ),
+      );
+    }
+    final white = (EvaluationMath.winPercent(evaluation!.cpWhite) * 100)
         .round()
         .clamp(1, 9999);
     final segments = [
@@ -29,7 +43,7 @@ class EvalBar extends StatelessWidget {
       ),
     ];
     return Tooltip(
-      message: 'Điểm từ phía Trắng: ${evaluationLabel(evaluation)}',
+      message: 'Điểm từ phía Trắng: ${evaluationLabel(evaluation!)}',
       child: SizedBox(
         width: 28,
         height: height,

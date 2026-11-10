@@ -12,10 +12,12 @@ class MoveList extends StatefulWidget {
     required this.moves,
     required this.selectedPly,
     required this.onSelect,
+    this.fillHeight = false,
   });
   final List<MoveAnalysis> moves;
   final int selectedPly;
   final ValueChanged<int> onSelect;
+  final bool fillHeight;
   @override
   State<MoveList> createState() => _MoveListState();
 }
@@ -23,6 +25,7 @@ class MoveList extends StatefulWidget {
 class _MoveListState extends State<MoveList> {
   final _scroll = ScrollController();
   double _rowExtent = 0;
+  double _viewportHeight = 0;
   int? _lastSelectedPly;
 
   static const _moveStyle = TextStyle(fontSize: 16, height: 1.25);
@@ -55,10 +58,11 @@ class _MoveListState extends State<MoveList> {
     return size;
   }
 
-  void _keepSelectionVisible(double extent) {
-    final resized = _rowExtent != extent;
+  void _keepSelectionVisible(double extent, double viewportHeight) {
+    final resized = _rowExtent != extent || _viewportHeight != viewportHeight;
     if (!resized && _lastSelectedPly == widget.selectedPly) return;
     _rowExtent = extent;
+    _viewportHeight = viewportHeight;
     _lastSelectedPly = widget.selectedPly;
     // Wait for the list to lay out with its new row height before scrolling.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -140,10 +144,11 @@ class _MoveListState extends State<MoveList> {
                 ? titleHeight + 8 + footerHeight
                 : math.max(titleHeight, math.max(chipHeight, evalHeight))),
       );
-      _keepSelectionVisible(extent);
+      final height = widget.fillHeight ? box.maxHeight : 360.0;
+      _keepSelectionVisible(extent, math.min(height, box.maxHeight));
 
       return SizedBox(
-        height: 360,
+        height: height,
         child: ListView.builder(
           key: const Key('move-list'),
           controller: _scroll,

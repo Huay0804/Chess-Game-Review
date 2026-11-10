@@ -8,6 +8,62 @@ import 'package:chess_game_review/domain/services/chess_rules.dart';
 
 @LazySingleton(as: ChessRules)
 class DartchessRules implements ChessRules {
+  String _standardUci(dc.Position position, dc.Move move) {
+    final san = position.makeSan(move).$2;
+    final rank = position.turn == dc.Side.white ? '1' : '8';
+    return san.startsWith('O-O-O')
+        ? 'e${rank}c$rank'
+        : san.startsWith('O-O')
+        ? 'e${rank}g$rank'
+        : move.uci;
+  }
+
+  @override
+  List<String> legalMoves(String fen) {
+    try {
+      final position = dc.Chess.fromSetup(dc.Setup.parseFen(fen));
+      if (position.isGameOver) return const [];
+      return [
+        for (final entry in position.legalMoves.entries)
+          for (final to in entry.value.squares)
+            if (position.board.roleAt(entry.key) == dc.Role.pawn &&
+                (to.name.endsWith('8') || to.name.endsWith('1')))
+              for (final role in [
+                dc.Role.queen,
+                dc.Role.rook,
+                dc.Role.bishop,
+                dc.Role.knight,
+              ])
+                dc.NormalMove(from: entry.key, to: to, promotion: role).uci
+            else
+              _standardUci(position, dc.NormalMove(from: entry.key, to: to)),
+      ];
+    } catch (_) {
+      throw const ParseException(
+        'Chưa đọc được vị trí này. Bạn hãy chọn lại một nước trong ván gốc.',
+      );
+    }
+  }
+
+  @override
+  Move playMove(String fen, String uci, {required int ply}) {
+    if (!legalMoves(fen).contains(uci)) {
+      throw const ParseException(
+        'Nước đi chưa hợp lệ. Bạn hãy chọn một ô được gợi ý.',
+      );
+    }
+    final position = dc.Chess.fromSetup(dc.Setup.parseFen(fen));
+    final move = dc.Move.parse(uci)!;
+    return Move(
+      ply: ply,
+      moveNumber: position.fullmoves,
+      san: position.makeSan(move).$2,
+      uci: uci,
+      before: _snapshot(position),
+      after: _snapshot(position.play(move)),
+    );
+  }
+
   @override
   ParsedGame parsePgn(String pgn) {
     try {

@@ -1,4 +1,3 @@
-import 'package:chess_game_review/core/theme/app_theme.dart';
 import 'package:chess_game_review/domain/entities/game.dart';
 import 'package:chess_game_review/presentation/bloc/game_list_bloc.dart';
 import 'package:chess_game_review/presentation/widgets/game_list_widgets.dart';
@@ -32,24 +31,7 @@ class _GameListPageState extends State<GameListPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('♞  CHESS / REVIEW'),
-      actions: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
-          child: Center(
-            child: Text(
-              'STOCKFISH • LOCAL',
-              style: TextStyle(
-                color: AppTheme.accent,
-                fontSize: 12,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
+    appBar: AppBar(title: const Text('♞  CHESS / REVIEW')),
     body: GameListBody(
       usernameController: _username,
       formKey: _form,

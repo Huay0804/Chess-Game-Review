@@ -1,6 +1,10 @@
 # Chess Game Review
 
-Ứng dụng Flutter đọc ván cờ từ Chess.com REST API và phân tích bằng Stockfish cục bộ. Dự án áp dụng **Chủ đề 01: OOP nâng cao & Xử lý lỗi trong Dart**, **Chủ đề 02: Bố cục linh hoạt & Xử lý không gian**, đồng thời giữ kiến trúc của **Chủ đề 04: Clean Architecture & Dependency Injection**.
+Ứng dụng Flutter đọc ván cờ từ Chess.com REST API và phân tích bằng Stockfish cục bộ. Dự án áp dụng **Chủ đề 01: OOP nâng cao & Xử lý lỗi trong Dart**, **Chủ đề 02: Bố cục linh hoạt & Xử lý không gian**, **Chủ đề 08: Animation & Cử chỉ**, đồng thời giữ kiến trúc của **Chủ đề 04: Clean Architecture & Dependency Injection**.
+
+Danh sách ván hiển thị **Thắng / Thua / Hòa** theo người chơi được tìm kiếm. Trong màn hình xem lại, nút **Cài đặt phân tích** chọn độ sâu; mục **Chi tiết** mở các chỉ số và biến phân tích của nước đi. Các nút thông tin cung cấp hướng dẫn khi cần.
+
+Sau khi phân tích, màn hình hiện biểu đồ và tổng kết trước. Nhấn **Bắt đầu xem lại** để xem nước đầu tiên; bảng bên cạnh chuyển sang nhận xét, danh sách nước đi, biểu đồ và nút điều hướng. **Tổng kết → Tiếp tục xem lại** giữ nguyên vị trí và nhánh đang thử, không phân tích lại. Chọn điểm trên biểu đồ hoặc kéo quân cũng mở phần xem từng nước. Cửa sổ rộng giữ bàn cờ bên trái và cuộn bảng bên phải; cửa sổ hẹp hoặc thấp xếp các phần theo chiều dọc.
 
 ## Thành viên và phân công
 
@@ -85,6 +89,24 @@ Demo: mở một ván đã phân tích, chọn nước đi và đảo bàn cờ;
 | Đọc REST API | [ChessComRemoteDataSource](lib/data/datasources/chess_com_remote_data_source.dart) |
 | Unit test Domain với mock abstract interface | [get_games_test.dart](test/domain/get_games_test.dart), [review_game_test.dart](test/domain/review_game_test.dart) |
 | Kiểm tra Presentation không phụ thuộc Data Source | [architecture_test.dart](test/architecture_test.dart) |
+
+## Các yêu cầu Chủ đề 08 trong mã nguồn
+
+| Yêu cầu | Vị trí và cách áp dụng |
+| --- | --- |
+| Implicit animation | [chess_board.dart](lib/presentation/widgets/chess_board.dart): `AnimatedContainer` chuyển màu cả ô xuất phát và ô đích; `TweenAnimationBuilder` cho nhãn chất lượng ở ô đích xuất hiện bằng opacity và scale |
+| AnimationController và tài nguyên | Quân trượt 350 ms khi xem từng nước; nhãn chất lượng xuất hiện trong 280 ms sau khi quân tới ô đích. Thả sai trả quân về trong 200 ms; `SingleTickerProviderStateMixin`, `initState`, `dispose`, hỗ trợ `disableAnimations` |
+| Gesture có chức năng thực tế | `Draggable` cho phép kéo quân trực tiếp, gợi ý ô hợp lệ, chọn quân phong cấp; quân bám con trỏ khi kéo |
+| Phân tích nước thử | [ExploreMoves](lib/domain/usecases/explore_moves.dart) dùng abstract `ChessRules` để kiểm tra/thực hiện nước; [AnalyzeMove](lib/domain/usecases/analyze_move.dart) đánh giá trước/sau qua abstract `EvaluationEngine` và dùng lại công thức phân loại |
+| Không cản thao tác | [VariationCubit](lib/presentation/bloc/variation_cubit.dart) cập nhật bàn ngay, hủy tìm kiếm cũ và bỏ qua kết quả đến muộn; cho phép đi tiếp trong lúc engine tính; màu/điểm cũ không được dùng cho vị trí mới |
+
+Demo: mở một ván đã phân tích → chọn vị trí → kéo quân của bên tới lượt sang ô có chấm. Đi đúng nước tiếp theo vẫn theo ván gốc; đi khác tự tạo nhánh, không cần bật chế độ. Thả sai hoặc ngoài bàn sẽ trả quân về. Sau khi Stockfish tính xong, cả ô xuất phát và ô đích đổi cùng màu chất lượng nước đi, kèm nhãn nhỏ ở ô đích; phần nhận xét bên dưới vẫn có tên chất lượng bằng chữ.
+
+Có thể kéo tiếp cho cả hai bên, dùng nút/phím ← → hoặc chọn nước trong nhánh. Bấm **Về ván gốc**, phím **Esc**, hoặc chọn một nước trong danh sách/biểu đồ ván gốc để trở lại. Nhánh là tạm thời: đi khác ở giữa nhánh thay phần tiếp theo; trở về ván gốc bỏ nhánh. Tổng kết accuracy và biểu đồ luôn thuộc ván gốc. Nếu phân tích lỗi, vị trí vẫn giữ nguyên và có nút thử lại.
+
+Nhãn dùng công thức hiện có của dự án, không phải thuật toán độc quyền Chess.com. Nhánh chưa có nước đáp tiếp theo để xác nhận hy sinh nên không tự gán Brilliant. Tham khảo luồng [tạo biến trực tiếp](https://support.chess.com/en/articles/8648793-how-can-i-add-comments-and-variations-to-games) và [nhãn phân loại trên bàn](https://support.chess.com/en/articles/8584089-how-does-game-review-work) của Chess.com; thời lượng và hiệu ứng là lựa chọn của dự án.
+
+Kiểm chứng: `test/domain/analyze_move_test.dart` mock các interface; `test/data/interactive_rules_test.dart` kiểm tra luật; `test/presentation/chess_board_test.dart` và `variation_cubit_test.dart` kiểm tra kéo thả, chuyển động, nhánh, hủy/tái thử. Các test này không cần mạng hay Stockfish thật.
 
 ## Kiểm tra
 

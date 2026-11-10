@@ -5,6 +5,7 @@ import 'package:chess_game_review/core/theme/app_theme.dart';
 import 'package:chess_game_review/injection.dart';
 import 'package:chess_game_review/presentation/bloc/game_list_bloc.dart';
 import 'package:chess_game_review/presentation/bloc/review_bloc.dart';
+import 'package:chess_game_review/presentation/bloc/variation_cubit.dart';
 import 'package:chess_game_review/presentation/pages/game_list_page.dart';
 import 'package:chess_game_review/presentation/pages/review_page.dart';
 import 'package:flutter/material.dart';
@@ -65,7 +66,12 @@ class _AppState extends State<App> {
       home: Builder(
         builder: (context) => GameListPage(
           onReview: (game) => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => ReviewPage(game: game)),
+            MaterialPageRoute<void>(
+              builder: (_) => BlocProvider(
+                create: (_) => getIt<VariationCubit>(),
+                child: ReviewPage(game: game),
+              ),
+            ),
           ),
         ),
       ),

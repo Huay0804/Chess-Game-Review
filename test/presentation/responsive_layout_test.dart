@@ -11,6 +11,9 @@ import 'package:chess_game_review/domain/entities/player.dart';
 import 'package:chess_game_review/domain/entities/position_eval.dart';
 import 'package:chess_game_review/presentation/bloc/game_list_bloc.dart';
 import 'package:chess_game_review/presentation/bloc/review_bloc.dart';
+import 'package:chess_game_review/presentation/bloc/variation_cubit.dart';
+import 'package:chess_game_review/domain/usecases/explore_moves.dart';
+import 'package:chess_game_review/domain/usecases/analyze_move.dart';
 import 'package:chess_game_review/presentation/pages/review_page.dart';
 import 'package:chess_game_review/presentation/widgets/chess_board.dart';
 import 'package:chess_game_review/presentation/widgets/game_list_widgets.dart';
@@ -26,6 +29,10 @@ class MockGameListBloc extends MockBloc<GameListEvent, GameListState>
 
 class MockReviewBloc extends MockBloc<ReviewEvent, ReviewState>
     implements ReviewBloc {}
+
+class MockExploreMoves extends Mock implements ExploreMoves {}
+
+class MockAnalyzeMove extends Mock implements AnalyzeMove {}
 
 // Layout-only fixture: long names, long SAN, three-digit move numbers and all
 // quality labels. It does not represent a playable PGN or engine evaluation.
@@ -120,6 +127,8 @@ void main() {
           testApp(
             Scaffold(
               body: ReviewContent(
+                view: ReviewView.moves,
+                onViewChanged: (_) {},
                 review: review,
                 selectedPly: 239,
                 flipped: false,
@@ -284,6 +293,7 @@ void main() {
             return testApp(
               Scaffold(
                 body: MoveList(
+                  fillHeight: true,
                   moves: review.moves,
                   selectedPly: selected,
                   onSelect: (ply) => update(() => selected = ply),
@@ -296,6 +306,13 @@ void main() {
       );
       update(() => selected = 220);
       await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('move-220')).hitTestable(),
+        findsOneWidget,
+      );
+      await tester.binding.setSurfaceSize(const Size(700, 220));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
       expect(
         find.byKey(const ValueKey('move-220')).hitTestable(),
         findsOneWidget,
@@ -330,17 +347,24 @@ void main() {
       addTearDown(bloc.close);
       when(() => bloc.state).thenReturn(ReviewLoaded(review));
       when(() => bloc.isClosed).thenReturn(false);
+      final explore = MockExploreMoves();
+      registerFallbackValue(review.initial);
+      when(() => explore.legalMoves(any())).thenReturn(const []);
       await tester.pumpWidget(
         testApp(
           BlocProvider<ReviewBloc>.value(
             value: bloc,
-            child: ReviewPage(game: review.game),
+            child: BlocProvider(
+              create: (_) => VariationCubit(explore, MockAnalyzeMove()),
+              child: ReviewPage(game: review.game),
+            ),
           ),
         ),
       );
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.byTooltip('Nước tiếp'));
-      await tester.tap(find.byTooltip('Nước tiếp'));
+      await tester.ensureVisible(find.byKey(const Key('start-review')));
+      await tester.tap(find.byKey(const Key('start-review')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Đảo bàn cờ'));
       await tester.pumpAndSettle();
       final fen = tester
@@ -348,14 +372,18 @@ void main() {
           .position
           .fen;
       expect(fen, review.moves.first.move.after.fen);
+      final boardState = tester.state(find.byType(ChessBoard));
       for (final width in [889.0, 890.0, 360.0, 1200.0]) {
         await tester.binding.setSurfaceSize(Size(width, 800));
         await tester.pumpAndSettle();
         final board = tester.widget<ChessBoard>(find.byType(ChessBoard));
         expect(board.position.fen, fen);
         expect(board.flipped, isTrue);
+        expect(tester.state(find.byType(ChessBoard)), same(boardState));
         expect(tester.takeException(), isNull);
       }
+      registerFallbackValue(CancelReview());
+      verify(() => bloc.add(any(that: isA<StartReview>()))).called(1);
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );

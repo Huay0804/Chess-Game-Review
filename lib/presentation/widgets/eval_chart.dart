@@ -8,15 +8,17 @@ class EvalChart extends StatelessWidget {
     required this.evaluations,
     required this.selectedPly,
     required this.onSelect,
+    this.height = 150,
   });
   final List<PositionEval> evaluations;
   final int selectedPly;
   final ValueChanged<int> onSelect;
+  final double height;
   @override
   Widget build(BuildContext context) => Semantics(
     label: 'Biểu đồ đánh giá. Bấm một điểm để xem vị trí tương ứng.',
     child: SizedBox(
-      height: 150,
+      height: height,
       child: LayoutBuilder(
         builder: (context, constraints) => GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -89,27 +91,49 @@ class _ChartPainter extends CustomPainter {
       ..lineTo(rect.right, rect.center.dy)
       ..lineTo(rect.left, rect.center.dy)
       ..close();
-    canvas.save();
-    canvas.clipRect(rect);
-    canvas.drawPath(
-      fill,
-      Paint()..color = AppTheme.accent.withValues(alpha: .10),
-    );
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = AppTheme.accent
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke,
-    );
-    canvas.restore();
+    // Clip at zero so segments that cross it change color exactly at equality.
+    for (final (region, color) in [
+      (
+        Rect.fromLTRB(rect.left, rect.top, rect.right, rect.center.dy),
+        Colors.white,
+      ),
+      (
+        Rect.fromLTRB(rect.left, rect.center.dy, rect.right, rect.bottom),
+        Colors.black,
+      ),
+    ]) {
+      canvas.save();
+      canvas.clipRect(region);
+      canvas.drawPath(fill, Paint()..color = color.withValues(alpha: .25));
+      // A subtle outline keeps the black curve readable on the dark card.
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = AppTheme.muted
+          ..strokeWidth = 3
+          ..style = PaintingStyle.stroke,
+      );
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = color
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke,
+      );
+      canvas.restore();
+    }
     final point = points[selected.clamp(0, points.length - 1)];
     canvas.drawLine(
       Offset(point.dx, rect.top),
       Offset(point.dx, rect.bottom),
-      Paint()..color = AppTheme.accent.withValues(alpha: .5),
+      Paint()..color = AppTheme.muted.withValues(alpha: .5),
     );
-    canvas.drawCircle(point, 4, Paint()..color = AppTheme.accent);
+    canvas.drawCircle(point, 5, Paint()..color = AppTheme.muted);
+    canvas.drawCircle(
+      point,
+      4,
+      Paint()..color = point.dy <= rect.center.dy ? Colors.white : Colors.black,
+    );
   }
 
   @override

@@ -1,7 +1,7 @@
-import 'package:chess_game_review/core/theme/app_theme.dart';
 import 'package:chess_game_review/domain/entities/game.dart';
 import 'package:chess_game_review/domain/entities/review_config.dart';
 import 'package:chess_game_review/presentation/bloc/review_bloc.dart';
+import 'package:chess_game_review/presentation/bloc/variation_cubit.dart';
 import 'package:chess_game_review/presentation/widgets/review_panels.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -17,24 +17,33 @@ class ReviewPage extends StatefulWidget {
 
 class _ReviewPageState extends State<ReviewPage> {
   late final ReviewBloc _bloc;
+  late final VariationCubit _exploration;
   int _depth = ReviewConfig.defaultDepth;
-  int _selectedPly = 0;
   bool _flipped = false;
+  ReviewView _view = ReviewView.overview;
+  bool _hasStarted = false;
 
   @override
   void initState() {
     super.initState();
     _bloc = context.read<ReviewBloc>();
+    _exploration = context.read<VariationCubit>();
     _start();
+    final state = _bloc.state;
+    if (state is ReviewLoaded) _exploration.load(state.review);
   }
 
-  void _start() => _bloc.add(StartReview(widget.game, depth: _depth));
-
-  void _select(int ply) => setState(() => _selectedPly = ply);
+  void _start() {
+    _view = ReviewView.overview;
+    _hasStarted = false;
+    _exploration.clear();
+    _bloc.add(StartReview(widget.game, depth: _depth));
+  }
 
   @override
   void dispose() {
     if (!_bloc.isClosed) _bloc.add(CancelReview());
+    if (!_exploration.isClosed) _exploration.clear();
     super.dispose();
   }
 
@@ -44,44 +53,56 @@ class _ReviewPageState extends State<ReviewPage> {
       title: const Text('Game review'),
       actions: [
         PopupMenuButton<int>(
-          tooltip: 'Độ sâu phân tích',
+          tooltip: 'Cài đặt phân tích',
+          icon: const Icon(Icons.tune),
           initialValue: _depth,
           onSelected: (depth) {
             setState(() => _depth = depth);
             _start();
           },
           itemBuilder: (_) => [
+            const PopupMenuItem<int>(
+              enabled: false,
+              child: Text(
+                'Độ sâu phân tích\nĐộ sâu cao hơn cần nhiều thời gian hơn.',
+              ),
+            ),
+            const PopupMenuDivider(),
             for (
               var depth = ReviewConfig.minDepth;
               depth <= ReviewConfig.maxDepth;
               depth++
             )
-              PopupMenuItem(value: depth, child: Text('Depth $depth')),
-          ],
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Center(
-              child: Text(
-                'DEPTH $_depth ▾',
-                style: const TextStyle(color: AppTheme.accent, fontSize: 12),
+              CheckedPopupMenuItem(
+                value: depth,
+                checked: depth == _depth,
+                child: Text('Độ sâu $depth'),
               ),
-            ),
-          ),
+          ],
         ),
       ],
     ),
     body: BlocConsumer<ReviewBloc, ReviewState>(
       listener: (_, state) {
-        if (state is ReviewLoaded) setState(() => _selectedPly = 0);
+        if (state is ReviewLoaded) _exploration.load(state.review);
       },
       builder: (context, state) {
         if (state is ReviewLoaded) {
-          return ReviewContent(
-            review: state.review,
-            selectedPly: _selectedPly.clamp(0, state.review.moves.length),
-            flipped: _flipped,
-            onSelect: _select,
-            onFlip: () => setState(() => _flipped = !_flipped),
+          return BlocBuilder<VariationCubit, VariationState>(
+            builder: (context, variation) => ReviewContent(
+              view: _view,
+              hasStarted: _hasStarted,
+              onViewChanged: (view) => setState(() {
+                _view = view;
+                if (view == ReviewView.moves) _hasStarted = true;
+              }),
+              review: state.review,
+              selectedPly: variation.basePly,
+              exploration: _exploration,
+              flipped: _flipped,
+              onSelect: _exploration.selectOriginal,
+              onFlip: () => setState(() => _flipped = !_flipped),
+            ),
           );
         }
         return ReviewStatusPanel(

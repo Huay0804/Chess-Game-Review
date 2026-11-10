@@ -30,9 +30,11 @@ import 'package:chess_game_review/domain/services/chess_rules.dart' as _i388;
 import 'package:chess_game_review/domain/services/evaluation_engine.dart'
     as _i958;
 import 'package:chess_game_review/domain/services/opening_book.dart' as _i808;
+import 'package:chess_game_review/domain/usecases/analyze_move.dart' as _i379;
 import 'package:chess_game_review/domain/usecases/calculate_accuracy.dart'
     as _i289;
 import 'package:chess_game_review/domain/usecases/classify_move.dart' as _i556;
+import 'package:chess_game_review/domain/usecases/explore_moves.dart' as _i977;
 import 'package:chess_game_review/domain/usecases/get_archives.dart' as _i445;
 import 'package:chess_game_review/domain/usecases/get_monthly_games.dart'
     as _i870;
@@ -40,6 +42,8 @@ import 'package:chess_game_review/domain/usecases/review_game.dart' as _i434;
 import 'package:chess_game_review/presentation/bloc/game_list_bloc.dart'
     as _i606;
 import 'package:chess_game_review/presentation/bloc/review_bloc.dart' as _i901;
+import 'package:chess_game_review/presentation/bloc/variation_cubit.dart'
+    as _i592;
 import 'package:dio/dio.dart' as _i361;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
@@ -77,6 +81,15 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i336.AppClock>(),
       ),
     );
+    gh.factory<_i379.AnalyzeMove>(
+      () => _i379.AnalyzeMove(
+        gh<_i958.EvaluationEngine>(),
+        gh<_i388.ChessRules>(),
+        gh<_i808.OpeningBook>(),
+        gh<_i556.ClassifyMove>(),
+        gh<_i289.CalculateAccuracy>(),
+      ),
+    );
     gh.factory<_i434.ReviewGame>(
       () => _i434.ReviewGame(
         gh<_i958.EvaluationEngine>(),
@@ -91,6 +104,15 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i870.GetMonthlyGames>(
       () => _i870.GetMonthlyGames(gh<_i784.GameRepository>()),
+    );
+    gh.factory<_i977.ExploreMoves>(
+      () => _i977.ExploreMoves(gh<_i388.ChessRules>()),
+    );
+    gh.factory<_i592.VariationCubit>(
+      () => _i592.VariationCubit(
+        gh<_i977.ExploreMoves>(),
+        gh<_i379.AnalyzeMove>(),
+      ),
     );
     gh.factory<_i901.ReviewBloc>(
       () => _i901.ReviewBloc(gh<_i434.ReviewGame>()),

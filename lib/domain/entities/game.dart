@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:chess_game_review/domain/entities/player.dart';
 
+enum GameOutcome { win, loss, draw, unknown }
+
 class GameSummary extends Equatable {
   const GameSummary({
     required this.url,
@@ -21,6 +23,36 @@ class GameSummary extends Equatable {
   final bool rated;
   final String rules;
   bool get canReview => rules == 'chess';
+
+  /// Result from the searched player's perspective, never inferred from colour.
+  GameOutcome outcomeOf(String username) {
+    final name = username.trim().toLowerCase();
+    final player = white.username.toLowerCase() == name
+        ? white
+        : black.username.toLowerCase() == name
+        ? black
+        : null;
+    if (player == null) return GameOutcome.unknown;
+    return switch (player.result) {
+      'win' => GameOutcome.win,
+      'checkmated' ||
+      'timeout' ||
+      'resigned' ||
+      'lose' ||
+      'abandoned' ||
+      'kingofthehill' ||
+      'threecheck' ||
+      'bughousepartnerlose' => GameOutcome.loss,
+      'agreed' ||
+      'repetition' ||
+      'stalemate' ||
+      'insufficient' ||
+      '50move' ||
+      'timevsinsufficient' => GameOutcome.draw,
+      _ => GameOutcome.unknown,
+    };
+  }
+
   String get result => white.result == 'win'
       ? '1–0'
       : black.result == 'win'

@@ -31,14 +31,14 @@ class GameListBody extends StatelessWidget {
           children: [
             const SizedBox(height: 18),
             Text(
-              'Mỗi ván cờ,\nmột điều để học.',
+              'Ván đấu của bạn',
               style: Theme.of(
                 context,
               ).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 14),
             const Text(
-              'Khám phá ván đấu Chess.com của bạn, xem lại từng nước và tìm những cơ hội đã bỏ lỡ.',
+              'Nhập tên người chơi Chess.com để tìm ván đấu.',
               style: TextStyle(color: AppTheme.muted, height: 1.6),
             ),
             const SizedBox(height: 28),
@@ -223,13 +223,6 @@ class GameListResults extends StatelessWidget {
           ),
         ),
       ],
-      if (state.status == GameListStatus.initial)
-        const EmptyState(
-          icon: Icons.travel_explore,
-          title: 'Bắt đầu từ một username',
-          detail:
-              'Không cần đăng nhập hay API key. Ván cờ được lấy từ dữ liệu công khai.',
-        ),
       if (state.status == GameListStatus.archives && state.archives.isEmpty)
         const EmptyState(
           icon: Icons.folder_open,

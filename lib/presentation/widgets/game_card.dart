@@ -18,6 +18,24 @@ class GameCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final date = game.endTime.toLocal();
     final opponent = game.opponentOf(username);
+    final (label, icon, color) = switch (game.outcomeOf(username)) {
+      GameOutcome.win => (
+        'Thắng',
+        Icons.check_circle_outline,
+        const Color(0xFF9DCC9C),
+      ),
+      GameOutcome.loss => (
+        'Thua',
+        Icons.cancel_outlined,
+        const Color(0xFFF17C7C),
+      ),
+      GameOutcome.draw => ('Hòa', Icons.drag_handle, AppTheme.accent),
+      GameOutcome.unknown => (
+        'Chưa rõ kết quả',
+        Icons.help_outline,
+        AppTheme.muted,
+      ),
+    };
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
@@ -25,16 +43,45 @@ class GameCard extends StatelessWidget {
           horizontal: 20,
           vertical: 12,
         ),
-        leading: CircleAvatar(
-          backgroundColor: AppTheme.background,
-          child: Text(
-            game.result,
-            style: const TextStyle(fontSize: 12, color: AppTheme.accent),
-          ),
-        ),
-        title: Text(
-          'vs ${opponent.username}  (${opponent.rating})',
-          style: const TextStyle(fontWeight: FontWeight.w600),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Semantics(
+              label: '${username.trim()}: $label',
+              excludeSemantics: true,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, color: color, size: 18),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 9),
+            Text(
+              'vs ${opponent.username}  (${opponent.rating})',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 7),
