@@ -14,6 +14,17 @@ export 'package:chess_game_review/presentation/bloc/game_list_state.dart';
 class GameListBloc extends Bloc<GameListEvent, GameListState> {
   GameListBloc(this._getArchives, this._getMonthlyGames)
     : super(const GameListState()) {
+    on<RecordGameAccuracy>((event, emit) {
+      emit(
+        state.copyWith(
+          accuracies: Map.unmodifiable({
+            ...state.accuracies,
+            event.gameUrl: event.accuracy,
+          }),
+          failure: state.failure,
+        ),
+      );
+    });
     on<GameListRequest>(_request, transformer: restartable());
     on<FilterTimeClass>(
       (event, emit) => emit(
@@ -39,6 +50,7 @@ class GameListBloc extends Bloc<GameListEvent, GameListState> {
           GameListState(
             status: GameListStatus.loadingArchives,
             username: GetArchives.normalize(event.username),
+            accuracies: state.accuracies,
           ),
         );
         await runWithErrorHandling(

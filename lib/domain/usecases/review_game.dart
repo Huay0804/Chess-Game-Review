@@ -113,38 +113,17 @@ class ReviewGame {
     for (var i = 0; i < total; i++) {
       final move = parsed.moves[i];
       final after = await evaluate(move.after);
-      final loss = EvaluationMath.loss(
-        before.cpWhite,
-        after.cpWhite,
-        move.side,
-      );
-      final beforeWin = EvaluationMath.forSide(before.cpWhite, move.side) / 100;
-      final afterWin = EvaluationMath.forSide(after.cpWhite, move.side) / 100;
+      final loss = EvaluationMath.moveLoss(move, before, after);
       played.add(move.uci);
       final opening = standardStart ? _book.openingFor(played) : null;
-      final second = before.second;
-      final alternativeLoss = second == null
-          ? null
-          : (EvaluationMath.forSide(before.cpWhite, move.side) -
-                    EvaluationMath.forSide(second.cpWhite, move.side)) /
-                100;
-      // A sacrifice usually loses material only on the opponent's next reply.
-      // This one-reply heuristic cannot prove a tactical sacrifice.
-      final sacrificed =
-          i + 1 < total &&
-          (parsed.moves[i + 1].after.materialBalance -
-                      move.before.materialBalance) *
-                  move.side.sign <=
-              -ReviewConfig.sacrificeValue;
-      final quality = _classify(
+      final quality = _classify.forMove(
+        move: move,
+        before: before,
+        after: after,
+        rules: _rules,
         loss: loss,
-        isEngineBest: move.uci == before.bestMove,
         isBook: opening != null,
-        beforeWin: beforeWin,
-        afterWin: afterWin,
-        alternativeLoss: alternativeLoss,
         opponentLoss: analyses.isEmpty ? 0 : analyses.last.loss,
-        isSacrifice: sacrificed,
       );
       analyses.add(
         MoveAnalysis(

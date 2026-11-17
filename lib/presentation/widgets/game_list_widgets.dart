@@ -217,6 +217,7 @@ class GameListResults extends StatelessWidget {
           (game) => GameCard(
             game: game,
             username: state.username,
+            accuracy: state.accuracies[game.url],
             onTap: game.canReview && onReview != null
                 ? () => onReview!(game)
                 : null,

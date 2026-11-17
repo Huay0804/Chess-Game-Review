@@ -1,3 +1,4 @@
+import 'package:chess_game_review/domain/entities/game_review.dart';
 import 'package:chess_game_review/core/theme/app_theme.dart';
 import 'package:chess_game_review/domain/entities/game.dart';
 import 'package:flutter/material.dart';
@@ -8,11 +9,13 @@ class GameCard extends StatelessWidget {
     required this.game,
     required this.username,
     this.onTap,
+    this.accuracy,
   });
 
   final Game game;
   final String username;
   final VoidCallback? onTap;
+  final AccuracyReport? accuracy;
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +84,27 @@ class GameCard extends StatelessWidget {
               'vs ${opponent.username}  (${opponent.rating})',
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
+            if (accuracy != null) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Độ chính xác',
+                style: TextStyle(color: AppTheme.muted, fontSize: 12),
+              ),
+              Wrap(
+                spacing: 16,
+                runSpacing: 4,
+                children: [
+                  Text(
+                    'Trắng: ${accuracy!.white?.toStringAsFixed(1) ?? '—'}',
+                    style: const TextStyle(color: AppTheme.accent),
+                  ),
+                  Text(
+                    'Đen: ${accuracy!.black?.toStringAsFixed(1) ?? '—'}',
+                    style: const TextStyle(color: AppTheme.accent),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
         subtitle: Padding(

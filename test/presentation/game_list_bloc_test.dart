@@ -1,3 +1,4 @@
+import 'package:chess_game_review/domain/entities/game_review.dart';
 import 'dart:async';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:chess_game_review/core/errors/app_exception.dart';
@@ -25,6 +26,31 @@ void main() {
     archives = MockGetArchives();
     monthly = MockGetMonthlyGames();
   });
+  test(
+    'accuracy survives navigation and a new review replaces only its game',
+    () async {
+      when(() => archives(any())).thenAnswer((_) async => []);
+      when(() => monthly(any())).thenAnswer((_) async => []);
+      final bloc = GameListBloc(archives, monthly);
+      addTearDown(bloc.close);
+      Future<void> send(GameListEvent event) async {
+        bloc.add(event);
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      const first = AccuracyReport(white: 81.2, black: 90.3);
+      const second = AccuracyReport(white: null, black: 72);
+      await send(RecordGameAccuracy('game-a', first));
+      await send(RecordGameAccuracy('game-b', second));
+      await send(SearchPlayer('other'));
+      await send(SelectMonth(const ArchiveMonth(2025, 1)));
+      await send(FilterTimeClass('rapid'));
+      expect(bloc.state.accuracies, {'game-a': first, 'game-b': second});
+      await send(RecordGameAccuracy('game-a', second));
+      expect(bloc.state.accuracies, {'game-a': second, 'game-b': second});
+      expect(bloc.state.timeClass, 'rapid');
+    },
+  );
   blocTest<GameListBloc, GameListState>(
     'search emits loading and archives',
     build: () {

@@ -14,7 +14,6 @@ class ReviewConfig {
   static const accuracyScale = 103.1668;
   static const accuracyDecay = 0.04354;
   static const accuracyOffset = 3.1669;
-  static const bestEpsilon = 0.0001;
   static const excellent = 0.02;
   static const good = 0.05;
   static const inaccuracy = 0.10;
@@ -24,6 +23,8 @@ class ReviewConfig {
   static const uniqueMoveGap = 0.15;
   static const overwhelming = 0.90;
   static const sacrificeValue = 2;
+  // Combined non-pawn, non-king material used by the endgame sacrifice gate.
+  static const endgameMaterial = 26;
   static const sacrificeMinimumWin = 0.50;
   static const greatMinimumWin = 0.45;
   static const missLoss = 0.10;

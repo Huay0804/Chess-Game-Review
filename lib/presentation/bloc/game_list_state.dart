@@ -2,6 +2,7 @@ import 'package:chess_game_review/core/errors/app_exception.dart';
 import 'package:chess_game_review/domain/entities/archive_month.dart';
 import 'package:chess_game_review/domain/entities/game.dart';
 import 'package:equatable/equatable.dart';
+import 'package:chess_game_review/domain/entities/game_review.dart';
 
 enum GameListStatus {
   initial,
@@ -21,6 +22,7 @@ class GameListState extends Equatable {
     this.games = const [],
     this.timeClass,
     this.failure,
+    this.accuracies = const {},
   });
 
   final GameListStatus status;
@@ -30,6 +32,7 @@ class GameListState extends Equatable {
   final List<Game> games;
   final String? timeClass;
   final AppException? failure;
+  final Map<String, AccuracyReport> accuracies;
 
   List<Game> get visibleGames => timeClass == null
       ? games
@@ -43,7 +46,9 @@ class GameListState extends Equatable {
     AppException? failure,
     String? timeClass,
     bool resetFilter = false,
+    Map<String, AccuracyReport>? accuracies,
   }) => GameListState(
+    accuracies: accuracies ?? this.accuracies,
     status: status ?? this.status,
     username: username,
     archives: archives ?? this.archives,
@@ -62,5 +67,6 @@ class GameListState extends Equatable {
     games,
     timeClass,
     failure,
+    accuracies,
   ];
 }

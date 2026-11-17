@@ -59,17 +59,26 @@ class _AppState extends State<App> {
       BlocProvider.value(value: _list),
       BlocProvider.value(value: _review),
     ],
-    child: MaterialApp(
-      title: 'Chess Game Review',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
-      home: Builder(
-        builder: (context) => GameListPage(
-          onReview: (game) => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => BlocProvider(
-                create: (_) => getIt<VariationCubit>(),
-                child: ReviewPage(game: game),
+    child: BlocListener<ReviewBloc, ReviewState>(
+      listener: (context, state) {
+        if (state is ReviewLoaded) {
+          context.read<GameListBloc>().add(
+            RecordGameAccuracy(state.review.game.url, state.review.accuracy),
+          );
+        }
+      },
+      child: MaterialApp(
+        title: 'Chess Game Review',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.dark,
+        home: Builder(
+          builder: (context) => GameListPage(
+            onReview: (game) => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => BlocProvider(
+                  create: (_) => getIt<VariationCubit>(),
+                  child: ReviewPage(game: game),
+                ),
               ),
             ),
           ),

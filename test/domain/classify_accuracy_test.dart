@@ -9,9 +9,9 @@ import '../support/domain_fixtures.dart';
 void main() {
   const classify = ClassifyMove(ReviewConfig(heuristicsEnabled: false));
   for (final (loss, quality) in <(double, MoveQuality)>[
-    (-.1, MoveQuality.best),
-    (0, MoveQuality.best),
-    (.0001, MoveQuality.best),
+    (-.1, MoveQuality.excellent),
+    (0, MoveQuality.excellent),
+    (.0001, MoveQuality.excellent),
     (.00010001, MoveQuality.excellent),
     (.02, MoveQuality.excellent),
     (.02000001, MoveQuality.good),
@@ -28,11 +28,13 @@ void main() {
       () => expect(classify(loss: loss), quality),
     );
   }
-  test('engine best overrides search noise; book has precedence', () {
-    expect(classify(loss: .3, isEngineBest: true), MoveQuality.best);
+  test('best and book tolerate small noise but never hide a large loss', () {
+    expect(classify(loss: .01, isEngineBest: true), MoveQuality.best);
+    expect(classify(loss: .01, isBook: true), MoveQuality.book);
+    expect(classify(loss: .3, isEngineBest: true), MoveQuality.blunder);
     expect(
       classify(loss: .3, isEngineBest: true, isBook: true),
-      MoveQuality.book,
+      MoveQuality.blunder,
     );
   });
   test('Great, Brilliant and Miss are bounded, optional heuristics', () {
@@ -42,7 +44,12 @@ void main() {
       MoveQuality.great,
     );
     expect(
-      heuristic(loss: .01, isSacrifice: true, afterWin: .6),
+      heuristic(
+        loss: .01,
+        isSacrifice: true,
+        afterWin: .6,
+        alternativeLoss: .2,
+      ),
       MoveQuality.brilliant,
     );
     expect(
@@ -51,7 +58,7 @@ void main() {
     );
     expect(
       heuristic(loss: 0, isSacrifice: true, beforeWin: .95, afterWin: .95),
-      MoveQuality.best,
+      MoveQuality.excellent,
     );
     expect(
       heuristic(loss: .01, isSacrifice: true, beforeWin: .2, afterWin: .2),

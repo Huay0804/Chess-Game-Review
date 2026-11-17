@@ -1,3 +1,4 @@
+import 'package:chess_game_review/domain/entities/game_review.dart';
 import 'package:chess_game_review/domain/entities/archive_month.dart';
 
 sealed class GameListEvent {}
@@ -20,4 +21,11 @@ class FilterTimeClass extends GameListEvent {
   FilterTimeClass(this.timeClass);
 
   final String? timeClass;
+}
+
+class RecordGameAccuracy extends GameListEvent {
+  RecordGameAccuracy(this.gameUrl, this.accuracy);
+
+  final String gameUrl;
+  final AccuracyReport accuracy;
 }

@@ -63,9 +63,8 @@ class AnalyzeMove {
     final before = await evaluate(move.before);
     final after = await evaluate(move.after);
     if (cancellation.isCancelled) throw const CancelledException();
-    final loss = EvaluationMath.loss(before.cpWhite, after.cpWhite, move.side);
+    final loss = EvaluationMath.moveLoss(move, before, after);
     final opening = openingLine == null ? null : _book.openingFor(openingLine);
-    final second = before.second;
     return MoveAnalysis(
       move: move,
       before: before,
@@ -76,19 +75,14 @@ class AnalyzeMove {
       bestMoveSan: before.bestMove == null
           ? null
           : _rules.sanForUci(move.fenBefore, before.bestMove!),
-      quality: _classify(
+      quality: _classify.forMove(
+        move: move,
+        before: before,
+        after: after,
+        rules: _rules,
         loss: loss,
-        isEngineBest: move.uci == before.bestMove,
         isBook: opening != null,
-        beforeWin: EvaluationMath.forSide(before.cpWhite, move.side) / 100,
-        afterWin: EvaluationMath.forSide(after.cpWhite, move.side) / 100,
-        alternativeLoss: second == null
-            ? null
-            : (EvaluationMath.forSide(before.cpWhite, move.side) -
-                      EvaluationMath.forSide(second.cpWhite, move.side)) /
-                  100,
         opponentLoss: opponentLoss,
-        // No future reply exists yet: do not invent a sacrifice/Brilliant label.
       ),
     );
   }
